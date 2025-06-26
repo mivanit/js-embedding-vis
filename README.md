@@ -5,3 +5,5 @@
 See [`miv.name/js-embedding-vis/digits/`](https://miv.name/js-embedding-vis/digits/) for a demo. Best viewed in fullscreen mode, kind of works on mobile but not ideal.
 
 [![](docs/screenshot.png)](https://miv.name/js-embedding-vis/digits/)
+
+Raw source code in `src/`, a bundled version (not including `three.js`) in `bundled/`.
