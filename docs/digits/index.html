@@ -619,49 +619,51 @@
 	
 	/* Loading indicator */
 	.loading-indicator {
-	    position: fixed;
-	    top: 20px;
-	    left: 50%;
-	    transform: translateX(-50%);
-	    background: rgba(0, 34, 68, 0.95);
-	    color: #00ff00;
-	    padding: 12px 24px;
-	    border-radius: 8px;
-	    font-family: 'Courier New', monospace;
-	    font-size: 12px;
-	    font-weight: bold;
-	    z-index: 1001;
-	    display: none;
-	    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-	    border: 1px solid #00ff00;
-	    min-width: 200px;
-	    text-align: center;
+		position: fixed;
+		top: 20px;
+		left: 50%;
+		transform: translateX(-50%);
+		background: rgba(0, 34, 68, 0.95);
+		color: #00ff00;
+		padding: 12px 24px;
+		border-radius: 8px;
+		font-family: 'Courier New', monospace;
+		font-size: 12px;
+		font-weight: bold;
+		z-index: 1001;
+		display: none;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+		border: 1px solid #00ff00;
+		min-width: 200px;
+		text-align: center;
 	}
 	
 	.loading-indicator.visible {
-	    display: block;
+		display: block;
 	}
 	
 	.loading-spinner {
-	    display: inline-block;
-	    width: 12px;
-	    height: 12px;
-	    border: 2px solid #004400;
-	    border-radius: 50%;
-	    border-top-color: #00ff00;
-	    animation: spin 1s ease-in-out infinite;
-	    margin-right: 8px;
-	    vertical-align: middle;
+		display: inline-block;
+		width: 12px;
+		height: 12px;
+		border: 2px solid #004400;
+		border-radius: 50%;
+		border-top-color: #00ff00;
+		animation: spin 1s ease-in-out infinite;
+		margin-right: 8px;
+		vertical-align: middle;
 	}
 	
 	@keyframes spin {
-	    to { transform: rotate(360deg); }
+		to {
+			transform: rotate(360deg);
+		}
 	}
 	
 	.loading-progress {
-	    margin-top: 4px;
-	    font-size: 10px;
-	    color: #00ccff;
+		margin-top: 4px;
+		font-size: 10px;
+		color: #00ccff;
 	}
 	</style>
 	<!-- end 'style.css' -->
@@ -912,7 +914,7 @@
 	
 				// For content mode - creates a new tab with plain text content
 				content: {
-					title: "Point Data: {activation.cls}",	
+					title: "Point Data: {activation.cls}",
 					template: "Point Information\n===================\n\nClass: {activation.cls}\nModel: {activation.model}\nPrompt: {activation.prompt}\nCoordinates:\n  X ({axis.x.name}): {coord.x}\n  Y ({axis.y.name}): {coord.y}\n  Z ({axis.z.name}): {coord.z}\nConfiguration:\n  Data File: {config.dataFile}\n  Color By: {config.defaultColorColumn}\n  Select By: {config.defaultSelectionColumn}"
 				},
 				// For URL mode - opens a URL constructed from template
@@ -1166,25 +1168,25 @@
 	 * Reset CONFIG to the loaded config.json state and clear URL parameters
 	 */
 	function resetConfigToLoaded() {
-	    if (!LOADED_CONFIG) {
-	        console.warn("No loaded config available, resetting to defaults");
-	        CONFIG = getDefaultConfig();
-	    } else {
-	        // Deep copy the loaded config back to CONFIG
-	        CONFIG = JSON.parse(JSON.stringify(LOADED_CONFIG));
-	    }
-	    
-	    // Clear URL parameters by navigating to clean URL
-	    const cleanURL = window.location.pathname;
-	    window.history.replaceState({}, '', cleanURL);
-	    
-	    // Clear the URL update timeout if it exists
-	    if (URL_UPDATE_TIMEOUT) {
-	        clearTimeout(URL_UPDATE_TIMEOUT);
-	        URL_UPDATE_TIMEOUT = null;
-	    }
-	    
-	    console.log("Config reset to loaded state and URL cleared");
+		if (!LOADED_CONFIG) {
+			console.warn("No loaded config available, resetting to defaults");
+			CONFIG = getDefaultConfig();
+		} else {
+			// Deep copy the loaded config back to CONFIG
+			CONFIG = JSON.parse(JSON.stringify(LOADED_CONFIG));
+		}
+	
+		// Clear URL parameters by navigating to clean URL
+		const cleanURL = window.location.pathname;
+		window.history.replaceState({}, '', cleanURL);
+	
+		// Clear the URL update timeout if it exists
+		if (URL_UPDATE_TIMEOUT) {
+			clearTimeout(URL_UPDATE_TIMEOUT);
+			URL_UPDATE_TIMEOUT = null;
+		}
+	
+		console.log("Config reset to loaded state and URL cleared");
 	}
 	</script>
 	<!-- end 'config.js' -->
@@ -3018,7 +3020,7 @@
 	        window.addEventListener('click', (e) => {
 	            // Don't process clicks during touch interactions
 	            if (this.touchState.panDisablesInteraction) return;
-	            
+	
 	            if (!this.selectOnClick || this.hoverId == null) return;
 	            const v = this.model.row(this.hoverId)[this.state.selectBy];
 	            this.state.toggleValue(v);
@@ -3108,7 +3110,7 @@
 	            this._clearTouchTimers();
 	            this.touchState.isPinching = true;
 	            this.touchState.panDisablesInteraction = true;
-	            
+	
 	            const touch1 = event.touches[0];
 	            const touch2 = event.touches[1];
 	            this.touchState.lastDistance = this._getTouchDistance(touch1, touch2);
@@ -3124,10 +3126,10 @@
 	            // Single touch movement - pan or cancel tap
 	            const touch = event.touches[0];
 	            const stored = this.touchState.touches.get(touch.identifier);
-	            
+	
 	            if (stored) {
 	                const moveDistance = Math.sqrt(
-	                    Math.pow(touch.clientX - stored.startX, 2) + 
+	                    Math.pow(touch.clientX - stored.startX, 2) +
 	                    Math.pow(touch.clientY - stored.startY, 2)
 	                );
 	
@@ -3140,7 +3142,7 @@
 	                    // Apply pan rotation
 	                    const deltaX = touch.clientX - stored.x;
 	                    const deltaY = touch.clientY - stored.y;
-	                    
+	
 	                    this._applyTouchPan(deltaX, deltaY);
 	                }
 	
@@ -3155,12 +3157,12 @@
 	            const touch1 = event.touches[0];
 	            const touch2 = event.touches[1];
 	            const distance = this._getTouchDistance(touch1, touch2);
-	            
+	
 	            if (this.touchState.lastDistance > 0) {
 	                const deltaDistance = distance - this.touchState.lastDistance;
 	                this._applyTouchZoom(deltaDistance);
 	            }
-	            
+	
 	            this.touchState.lastDistance = distance;
 	
 	            // Update touch positions
@@ -3179,27 +3181,27 @@
 	
 	    _onTouchEnd(event) {
 	        const now = performance.now();
-	        
+	
 	        // Remove ended touches from tracking
 	        const activeTouchIds = new Set(Array.from(event.touches).map(t => t.identifier));
 	        for (const [id] of this.touchState.touches) {
 	            if (!activeTouchIds.has(id)) {
 	                const stored = this.touchState.touches.get(id);
-	                
+	
 	                // Check if this was a quick tap (not moved, not held)
 	                if (stored && !this.touchState.isPanning && !this.touchState.isPinching) {
 	                    const duration = now - stored.startTime;
 	                    const moveDistance = Math.sqrt(
-	                        Math.pow(stored.x - stored.startX, 2) + 
+	                        Math.pow(stored.x - stored.startX, 2) +
 	                        Math.pow(stored.y - stored.startY, 2)
 	                    );
 	
-	                    if (duration < this.touchState.tapThreshold && 
+	                    if (duration < this.touchState.tapThreshold &&
 	                        moveDistance < this.touchState.moveThreshold) {
 	                        this._onSingleTap(stored);
 	                    }
 	                }
-	                
+	
 	                this.touchState.touches.delete(id);
 	            }
 	        }
@@ -3208,13 +3210,13 @@
 	        if (event.touches.length === 0) {
 	            this.touchState.touching = false;
 	            this.touchState.isPinching = false;
-	            
+	
 	            // Re-enable interaction after a short delay to prevent accidental clicks
 	            setTimeout(() => {
 	                this.touchState.isPanning = false;
 	                this.touchState.panDisablesInteraction = false;
 	            }, 100);
-	            
+	
 	            this._clearTouchTimers();
 	        }
 	    }
@@ -3223,7 +3225,7 @@
 	        // Single tap acts like hover - update pointer and show hover info
 	        this._updatePointerPosition(touchData.x, touchData.y);
 	        this.touchState.lastTapTime = performance.now();
-	        
+	
 	        // Briefly show hover for touch devices
 	        if (this.hoverActive && this.hoverId !== null) {
 	            // Force a hover update
@@ -3234,7 +3236,7 @@
 	    _onDoubleTap(touch) {
 	        // Double tap acts like click-to-select
 	        this._clearTouchTimers();
-	        
+	
 	        if (this.selectOnClick && this.hoverId !== null) {
 	            const v = this.model.row(this.hoverId)[this.state.selectBy];
 	            this.state.toggleValue(v);
@@ -3265,7 +3267,7 @@
 	    _applyTouchZoom(deltaDistance) {
 	        // Convert pinch distance to forward/backward movement
 	        const zoomAmount = deltaDistance * this.touchState.zoomSensitivity;
-	        
+	
 	        // Move camera forward/backward along its local Z axis
 	        const zoomVector = new THREE.Vector3(0, 0, -zoomAmount);
 	        zoomVector.applyQuaternion(this.camera.quaternion);
@@ -3909,10 +3911,7 @@
 			</div>
 			<div class="help-section">
 				<h3>Source code / report issues:</h3>
-				<p><a
-					href="https://github.com/mivanit/js-embedding-vis"
-					style="color: #ffbb00">
-					github.com/mivanit/js-embedding-vis</a>
+				<p><a href="https://github.com/mivanit/js-embedding-vis" style="color: #ffbb00"> github.com/mivanit/js-embedding-vis</a>
 			</div>
 			<div class="close-hint">Press H to close</div>
 		</div>
