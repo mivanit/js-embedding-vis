@@ -14,11 +14,13 @@ import numpy as np
 from sklearn import datasets
 from sklearn.decomposition import PCA
 
+
 class DataRaw(TypedDict):
-    data: np.ndarray # shape (n_samples, n_features)
-    target: np.ndarray # shape (n_samples,) all values in range [0, n_classes)
-    target_names: list[str] # length n_classes
-    feature_names: list[str] # length n_features
+    data: np.ndarray  # shape (n_samples, n_features)
+    target: np.ndarray  # shape (n_samples,) all values in range [0, n_classes)
+    target_names: list[str]  # length n_classes
+    feature_names: list[str]  # length n_features
+
 
 def write_data_jsonl(
     data_raw: DataRaw,
@@ -75,7 +77,7 @@ def generate_rand_data(
         target_names=target_names,
         feature_names=feature_names,
     )
-    
+
 
 if __name__ == "__main__":
     import sys
