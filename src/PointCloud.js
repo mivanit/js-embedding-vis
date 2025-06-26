@@ -63,11 +63,15 @@ class PointCloud {
 
         /* ── movement bookkeeping ──────────────────────────────── */
         this.keys = {};
-        this.pitch = 0;
+        this.pitch = CONFIG.camera.rotation.pitch; // Initialize from CONFIG
         this.mouseDX = 0;
         this.mouseDY = 0;
         this.rollSpeed = CONFIG.movement.rollSpeed;
         this.velocity = new THREE.Vector3();
+
+        /* camera sync debouncing */
+        this.cameraSyncTimeout = null;
+        this.cameraSyncDelay = 1000; // Sync camera to URL after 1 second of no movement
 
         /* ── cross-hair objects ───────────────────────────────── */
         this.crossH = null;
@@ -333,11 +337,17 @@ class PointCloud {
         const yaw = -deltaX * sens;
         const pitchDelta = -deltaY * sens;
 
-        if (yaw) this.camera.rotateY(yaw);
+        if (yaw) {
+            this.camera.rotateY(yaw);
+            CONFIG.camera.rotation.yaw += yaw;
+            this._debounceCameraSync();
+        }
         if (pitchDelta) {
             const newPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch + pitchDelta));
             this.camera.rotateX(newPitch - this.pitch);
             this.pitch = newPitch;
+            CONFIG.camera.rotation.pitch = this.pitch;
+            this._debounceCameraSync();
         }
     }
 
@@ -349,6 +359,12 @@ class PointCloud {
         const zoomVector = new THREE.Vector3(0, 0, -zoomAmount);
         zoomVector.applyQuaternion(this.camera.quaternion);
         this.camera.position.add(zoomVector);
+
+        // Update CONFIG to sync position to URL
+        CONFIG.camera.position.x = this.camera.position.x;
+        CONFIG.camera.position.y = this.camera.position.y;
+        CONFIG.camera.position.z = this.camera.position.z;
+        this._debounceCameraSync();
     }
 
     _getTouchDistance(touch1, touch2) {
@@ -505,7 +521,22 @@ class PointCloud {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setClearColor(CONFIG.rendering.clearColor);
         document.getElementById('container').appendChild(this.renderer.domElement);
-        this.camera.position.set(0, 0, 0);
+
+        // Set camera position and rotation from CONFIG
+        this.camera.position.set(
+            CONFIG.camera.position.x,
+            CONFIG.camera.position.y,
+            CONFIG.camera.position.z
+        );
+
+        // Apply rotation (yaw, pitch, roll)
+        this.camera.rotation.set(0, 0, 0); // Reset first
+        this.camera.rotateY(CONFIG.camera.rotation.yaw);
+        this.camera.rotateX(CONFIG.camera.rotation.pitch);
+        this.camera.rotateZ(CONFIG.camera.rotation.roll);
+
+        // Set internal pitch tracking to match config
+        this.pitch = CONFIG.camera.rotation.pitch;
     }
 
     /* ---------- in-scene cross-hair - using CONFIG ----------- */
@@ -684,16 +715,32 @@ class PointCloud {
         const yaw = -this.mouseDX * sens;
         const dp = -this.mouseDY * sens;
 
-        if (yaw) this.camera.rotateY(yaw);
+        if (yaw) {
+            this.camera.rotateY(yaw);
+            // Update CONFIG and debounce URL sync
+            CONFIG.camera.rotation.yaw += yaw;
+            this._debounceCameraSync();
+        }
         if (dp) {
             const np = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch + dp));
             this.camera.rotateX(np - this.pitch);
             this.pitch = np;
+            // Update CONFIG and debounce URL sync
+            CONFIG.camera.rotation.pitch = this.pitch;
+            this._debounceCameraSync();
         }
         this.mouseDX = this.mouseDY = 0;
 
-        if (this.keys['KeyQ']) this.camera.rotateZ(this.rollSpeed);
-        if (this.keys['KeyE']) this.camera.rotateZ(-this.rollSpeed);
+        if (this.keys['KeyQ']) {
+            this.camera.rotateZ(this.rollSpeed);
+            CONFIG.camera.rotation.roll += this.rollSpeed;
+            this._debounceCameraSync();
+        }
+        if (this.keys['KeyE']) {
+            this.camera.rotateZ(-this.rollSpeed);
+            CONFIG.camera.rotation.roll -= this.rollSpeed;
+            this._debounceCameraSync();
+        }
 
         this.velocity.set(0, 0, 0);
         if (this.keys['KeyW']) this.velocity.z -= 1;
@@ -707,6 +754,12 @@ class PointCloud {
             this.velocity.normalize().multiplyScalar(speed)
                 .applyQuaternion(this.camera.quaternion);
             this.camera.position.add(this.velocity);
+
+            // Update CONFIG and debounce URL sync
+            CONFIG.camera.position.x = this.camera.position.x;
+            CONFIG.camera.position.y = this.camera.position.y;
+            CONFIG.camera.position.z = this.camera.position.z;
+            this._debounceCameraSync();
         }
     }
 
@@ -730,6 +783,17 @@ class PointCloud {
 
         if (this.uiManager) this.uiManager.updateUI();
         this.renderer.render(this.scene, this.camera);
+    }
+
+    /* ---------- debounced camera sync to URL ----------------- */
+    _debounceCameraSync() {
+        if (this.cameraSyncTimeout) {
+            clearTimeout(this.cameraSyncTimeout);
+        }
+        this.cameraSyncTimeout = setTimeout(() => {
+            updateURL();
+            this.cameraSyncTimeout = null;
+        }, this.cameraSyncDelay);
     }
 
     /* ---------- allow UIManager to attach --------------------- */
