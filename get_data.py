@@ -8,14 +8,20 @@
 
 from pathlib import Path
 import json
+from typing import TypedDict
 
 import numpy as np
 from sklearn import datasets
 from sklearn.decomposition import PCA
 
+class DataRaw(TypedDict):
+    data: np.ndarray # shape (n_samples, n_features)
+    target: np.ndarray # shape (n_samples,) all values in range [0, n_classes)
+    target_names: list[str] # length n_classes
+    feature_names: list[str] # length n_features
 
 def write_data_jsonl(
-    data_raw: dict,
+    data_raw: DataRaw,
     output_path: Path,
     include_raw: bool = True,
 ) -> None:
@@ -47,10 +53,29 @@ def write_data_jsonl(
     assert {"pc.1", "pc.2", "pc.3"} <= data_transformed[0].keys()
 
     # save to JSON
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w") as f:
         for item in data_transformed:
             f.write(json.dumps(item) + "\n")
 
+
+def generate_rand_data(
+    n_samples: int = 1_000_000,
+    n_features: int = 5,
+    n_classes: int = 10,
+) -> DataRaw:
+    data: np.ndarray = np.random.rand(n_samples, n_features)
+    target: np.ndarray = np.random.randint(0, n_classes, size=n_samples)
+    target_names: list[str] = [f"class_{i}" for i in range(n_classes)]
+    feature_names: list[str] = [f"feature_{i}" for i in range(n_features)]
+
+    return DataRaw(
+        data=data,
+        target=target,
+        target_names=target_names,
+        feature_names=feature_names,
+    )
+    
 
 if __name__ == "__main__":
     import sys
@@ -65,5 +90,12 @@ if __name__ == "__main__":
             write_data_jsonl(
                 data_raw=datasets.load_digits(),
                 output_path=Path("docs/digits/digits.jsonl"),
+                include_raw=False,
+            )
+        case "stress":
+            point_count: int = 100_000
+            write_data_jsonl(
+                data_raw=generate_rand_data(),
+                output_path=Path("docs/stress/stress.jsonl"),
                 include_raw=False,
             )

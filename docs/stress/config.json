@@ -1,0 +1,31 @@
+{
+	"dataFile": "stress.jsonl",
+	"numericalPrefix": "pc.",
+	"defaultColorColumn": "target_name",
+	"defaultSelectionColumn": "target_name",
+	"hoverColumns": [
+		"target_name"
+	],
+	"selectedPoints": {
+		"size": 1,
+		"sizeMin": 0.001,
+		"sizeMax": 1,
+		"sizeStep": 0.1,
+		"opacityMin": 0.0,
+		"opacityStep": 0.01
+	},
+	"nonSelectedPoints": {
+		"size": 0.5,
+		"sizeMax": 1,
+		"sizeMin":  0.001,
+		"sizeStep": 0.01,
+		"opacityMin": 0.00
+	},
+	"movement": {
+		"speed": 25,
+		"speedMin": 1,
+		"rollSpeed": 0.02,
+		"mouseSensitivity": 0.002,
+		"sprintMultiplier": 3
+	}
+}
