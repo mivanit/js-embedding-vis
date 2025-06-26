@@ -13,7 +13,7 @@ inline_html_file(
     html_path=Path("src/index.html"),
     output_path=Path("bundled/index.html"),
     config=InlineConfig(
-		local=True,
-		remote=False,
-	),
+        local=True,
+        remote=False,
+    ),
 )

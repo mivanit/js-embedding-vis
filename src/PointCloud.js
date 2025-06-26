@@ -97,7 +97,7 @@ class PointCloud {
         window.addEventListener('click', (e) => {
             // Don't process clicks during touch interactions
             if (this.touchState.panDisablesInteraction) return;
-            
+
             if (!this.selectOnClick || this.hoverId == null) return;
             const v = this.model.row(this.hoverId)[this.state.selectBy];
             this.state.toggleValue(v);
@@ -187,7 +187,7 @@ class PointCloud {
             this._clearTouchTimers();
             this.touchState.isPinching = true;
             this.touchState.panDisablesInteraction = true;
-            
+
             const touch1 = event.touches[0];
             const touch2 = event.touches[1];
             this.touchState.lastDistance = this._getTouchDistance(touch1, touch2);
@@ -203,10 +203,10 @@ class PointCloud {
             // Single touch movement - pan or cancel tap
             const touch = event.touches[0];
             const stored = this.touchState.touches.get(touch.identifier);
-            
+
             if (stored) {
                 const moveDistance = Math.sqrt(
-                    Math.pow(touch.clientX - stored.startX, 2) + 
+                    Math.pow(touch.clientX - stored.startX, 2) +
                     Math.pow(touch.clientY - stored.startY, 2)
                 );
 
@@ -219,7 +219,7 @@ class PointCloud {
                     // Apply pan rotation
                     const deltaX = touch.clientX - stored.x;
                     const deltaY = touch.clientY - stored.y;
-                    
+
                     this._applyTouchPan(deltaX, deltaY);
                 }
 
@@ -234,12 +234,12 @@ class PointCloud {
             const touch1 = event.touches[0];
             const touch2 = event.touches[1];
             const distance = this._getTouchDistance(touch1, touch2);
-            
+
             if (this.touchState.lastDistance > 0) {
                 const deltaDistance = distance - this.touchState.lastDistance;
                 this._applyTouchZoom(deltaDistance);
             }
-            
+
             this.touchState.lastDistance = distance;
 
             // Update touch positions
@@ -258,27 +258,27 @@ class PointCloud {
 
     _onTouchEnd(event) {
         const now = performance.now();
-        
+
         // Remove ended touches from tracking
         const activeTouchIds = new Set(Array.from(event.touches).map(t => t.identifier));
         for (const [id] of this.touchState.touches) {
             if (!activeTouchIds.has(id)) {
                 const stored = this.touchState.touches.get(id);
-                
+
                 // Check if this was a quick tap (not moved, not held)
                 if (stored && !this.touchState.isPanning && !this.touchState.isPinching) {
                     const duration = now - stored.startTime;
                     const moveDistance = Math.sqrt(
-                        Math.pow(stored.x - stored.startX, 2) + 
+                        Math.pow(stored.x - stored.startX, 2) +
                         Math.pow(stored.y - stored.startY, 2)
                     );
 
-                    if (duration < this.touchState.tapThreshold && 
+                    if (duration < this.touchState.tapThreshold &&
                         moveDistance < this.touchState.moveThreshold) {
                         this._onSingleTap(stored);
                     }
                 }
-                
+
                 this.touchState.touches.delete(id);
             }
         }
@@ -287,13 +287,13 @@ class PointCloud {
         if (event.touches.length === 0) {
             this.touchState.touching = false;
             this.touchState.isPinching = false;
-            
+
             // Re-enable interaction after a short delay to prevent accidental clicks
             setTimeout(() => {
                 this.touchState.isPanning = false;
                 this.touchState.panDisablesInteraction = false;
             }, 100);
-            
+
             this._clearTouchTimers();
         }
     }
@@ -302,7 +302,7 @@ class PointCloud {
         // Single tap acts like hover - update pointer and show hover info
         this._updatePointerPosition(touchData.x, touchData.y);
         this.touchState.lastTapTime = performance.now();
-        
+
         // Briefly show hover for touch devices
         if (this.hoverActive && this.hoverId !== null) {
             // Force a hover update
@@ -313,7 +313,7 @@ class PointCloud {
     _onDoubleTap(touch) {
         // Double tap acts like click-to-select
         this._clearTouchTimers();
-        
+
         if (this.selectOnClick && this.hoverId !== null) {
             const v = this.model.row(this.hoverId)[this.state.selectBy];
             this.state.toggleValue(v);
@@ -344,7 +344,7 @@ class PointCloud {
     _applyTouchZoom(deltaDistance) {
         // Convert pinch distance to forward/backward movement
         const zoomAmount = deltaDistance * this.touchState.zoomSensitivity;
-        
+
         // Move camera forward/backward along its local Z axis
         const zoomVector = new THREE.Vector3(0, 0, -zoomAmount);
         zoomVector.applyQuaternion(this.camera.quaternion);

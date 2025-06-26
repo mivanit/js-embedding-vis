@@ -134,7 +134,7 @@ function getDefaultConfig() {
 
 			// For content mode - creates a new tab with plain text content
 			content: {
-				title: "Point Data: {activation.cls}",	
+				title: "Point Data: {activation.cls}",
 				template: "Point Information\n===================\n\nClass: {activation.cls}\nModel: {activation.model}\nPrompt: {activation.prompt}\nCoordinates:\n  X ({axis.x.name}): {coord.x}\n  Y ({axis.y.name}): {coord.y}\n  Z ({axis.z.name}): {coord.z}\nConfiguration:\n  Data File: {config.dataFile}\n  Color By: {config.defaultColorColumn}\n  Select By: {config.defaultSelectionColumn}"
 			},
 			// For URL mode - opens a URL constructed from template
@@ -388,23 +388,23 @@ function exportConfigToNewTab() {
  * Reset CONFIG to the loaded config.json state and clear URL parameters
  */
 function resetConfigToLoaded() {
-    if (!LOADED_CONFIG) {
-        console.warn("No loaded config available, resetting to defaults");
-        CONFIG = getDefaultConfig();
-    } else {
-        // Deep copy the loaded config back to CONFIG
-        CONFIG = JSON.parse(JSON.stringify(LOADED_CONFIG));
-    }
-    
-    // Clear URL parameters by navigating to clean URL
-    const cleanURL = window.location.pathname;
-    window.history.replaceState({}, '', cleanURL);
-    
-    // Clear the URL update timeout if it exists
-    if (URL_UPDATE_TIMEOUT) {
-        clearTimeout(URL_UPDATE_TIMEOUT);
-        URL_UPDATE_TIMEOUT = null;
-    }
-    
-    console.log("Config reset to loaded state and URL cleared");
+	if (!LOADED_CONFIG) {
+		console.warn("No loaded config available, resetting to defaults");
+		CONFIG = getDefaultConfig();
+	} else {
+		// Deep copy the loaded config back to CONFIG
+		CONFIG = JSON.parse(JSON.stringify(LOADED_CONFIG));
+	}
+
+	// Clear URL parameters by navigating to clean URL
+	const cleanURL = window.location.pathname;
+	window.history.replaceState({}, '', cleanURL);
+
+	// Clear the URL update timeout if it exists
+	if (URL_UPDATE_TIMEOUT) {
+		clearTimeout(URL_UPDATE_TIMEOUT);
+		URL_UPDATE_TIMEOUT = null;
+	}
+
+	console.log("Config reset to loaded state and URL cleared");
 }
