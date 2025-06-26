@@ -30,5 +30,10 @@
 		"rollSpeed": 0.02,
 		"mouseSensitivity": 0.002,
 		"sprintMultiplier": 3
+	},
+	"camera": {
+		"position": {
+			"z": 5.2
+		}
 	}
 }
