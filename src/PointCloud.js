@@ -1,5 +1,4 @@
-/* PointCloud.js – snap-to-point cross-hair, optional hover UI ("k"),
-   optional click-to-select ("b"), optional right-click action ("o"), and better picking accuracy using CONFIG. */
+/* PointCloud.js – Enhanced with mobile touch controls for pinch zoom, pan, tap, and hold */
 
 class PointCloud {
     /** @param {DataModel} model */
@@ -29,6 +28,25 @@ class PointCloud {
         this.hoverActive = CONFIG.interaction.hoverActive;
         this.selectOnClick = CONFIG.interaction.selectOnClick;
         this.rightClickActive = CONFIG.interaction.rightClickActive;
+
+        /* ── mobile touch state ─────────────────────────────── */
+        this.touchState = {
+            touching: false,
+            touches: new Map(), // trackingId -> {x, y, startTime}
+            lastDistance: 0,
+            isPinching: false,
+            isPanning: false,
+            panDisablesInteraction: false,
+            singleTapTimer: null,
+            holdTimer: null,
+            lastTapTime: 0,
+            tapThreshold: 200, // ms for tap vs hold
+            doubleTapThreshold: 300, // ms for double tap detection
+            holdThreshold: 500, // ms for hold detection
+            moveThreshold: 10, // pixels before it's considered a drag
+            zoomSensitivity: 0.01,
+            panSensitivity: 0.002
+        };
 
         /* ── colour / selection state ─────────────────────────── */
         this.state = new VisState(model);
@@ -72,14 +90,14 @@ class PointCloud {
                 this.mouseDX += e.movementX;
                 this.mouseDY += e.movementY;
             }
-            this.pointerScreen.x = e.clientX;
-            this.pointerScreen.y = e.clientY;
-            this.pointerNDC.x = (e.clientX / window.innerWidth) * 2 - 1;
-            this.pointerNDC.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            this._updatePointerPosition(e.clientX, e.clientY);
         });
 
         /* click-to-select (can be disabled) */
-        window.addEventListener('click', () => {
+        window.addEventListener('click', (e) => {
+            // Don't process clicks during touch interactions
+            if (this.touchState.panDisablesInteraction) return;
+            
             if (!this.selectOnClick || this.hoverId == null) return;
             const v = this.model.row(this.hoverId)[this.state.selectBy];
             this.state.toggleValue(v);
@@ -93,6 +111,9 @@ class PointCloud {
             const row = this.model.row(this.hoverId);
             this._handleRightClick(row, this.hoverId);
         });
+
+        /* ── Touch event handlers ─────────────────────────────── */
+        this._setupTouchEvents();
 
         /* pointer-lock helpers */
         document.addEventListener('dblclick', () => {
@@ -111,6 +132,247 @@ class PointCloud {
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
+    }
+
+    _setupTouchEvents() {
+        const canvas = this.renderer.domElement;
+
+        // Prevent default touch behaviors that interfere with our controls
+        canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+        canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+        canvas.addEventListener('touchend', e => e.preventDefault(), { passive: false });
+
+        canvas.addEventListener('touchstart', this._onTouchStart.bind(this));
+        canvas.addEventListener('touchmove', this._onTouchMove.bind(this));
+        canvas.addEventListener('touchend', this._onTouchEnd.bind(this));
+        canvas.addEventListener('touchcancel', this._onTouchEnd.bind(this));
+    }
+
+    _onTouchStart(event) {
+        const now = performance.now();
+        this.touchState.touching = true;
+
+        // Update touch tracking
+        for (const touch of event.touches) {
+            this.touchState.touches.set(touch.identifier, {
+                x: touch.clientX,
+                y: touch.clientY,
+                startX: touch.clientX,
+                startY: touch.clientY,
+                startTime: now
+            });
+        }
+
+        const touchCount = event.touches.length;
+
+        if (touchCount === 1) {
+            // Single touch - potential tap, hold, or pan start
+            const touch = event.touches[0];
+            this._updatePointerPosition(touch.clientX, touch.clientY);
+
+            // Set up hold timer
+            this.touchState.holdTimer = setTimeout(() => {
+                this._onTouchHold(touch);
+            }, this.touchState.holdThreshold);
+
+            // Check for double tap
+            const timeSinceLastTap = now - this.touchState.lastTapTime;
+            if (timeSinceLastTap < this.touchState.doubleTapThreshold) {
+                this._onDoubleTap(touch);
+                this.touchState.lastTapTime = 0; // Reset to prevent triple tap
+            }
+
+        } else if (touchCount === 2) {
+            // Two touches - pinch zoom setup
+            this._clearTouchTimers();
+            this.touchState.isPinching = true;
+            this.touchState.panDisablesInteraction = true;
+            
+            const touch1 = event.touches[0];
+            const touch2 = event.touches[1];
+            this.touchState.lastDistance = this._getTouchDistance(touch1, touch2);
+        }
+    }
+
+    _onTouchMove(event) {
+        if (!this.touchState.touching) return;
+
+        const touchCount = event.touches.length;
+
+        if (touchCount === 1 && !this.touchState.isPinching) {
+            // Single touch movement - pan or cancel tap
+            const touch = event.touches[0];
+            const stored = this.touchState.touches.get(touch.identifier);
+            
+            if (stored) {
+                const moveDistance = Math.sqrt(
+                    Math.pow(touch.clientX - stored.startX, 2) + 
+                    Math.pow(touch.clientY - stored.startY, 2)
+                );
+
+                // If moved beyond threshold, start panning
+                if (moveDistance > this.touchState.moveThreshold) {
+                    this._clearTouchTimers(); // Cancel tap/hold
+                    this.touchState.isPanning = true;
+                    this.touchState.panDisablesInteraction = true;
+
+                    // Apply pan rotation
+                    const deltaX = touch.clientX - stored.x;
+                    const deltaY = touch.clientY - stored.y;
+                    
+                    this._applyTouchPan(deltaX, deltaY);
+                }
+
+                // Update stored position
+                stored.x = touch.clientX;
+                stored.y = touch.clientY;
+                this._updatePointerPosition(touch.clientX, touch.clientY);
+            }
+
+        } else if (touchCount === 2 && this.touchState.isPinching) {
+            // Two finger pinch zoom
+            const touch1 = event.touches[0];
+            const touch2 = event.touches[1];
+            const distance = this._getTouchDistance(touch1, touch2);
+            
+            if (this.touchState.lastDistance > 0) {
+                const deltaDistance = distance - this.touchState.lastDistance;
+                this._applyTouchZoom(deltaDistance);
+            }
+            
+            this.touchState.lastDistance = distance;
+
+            // Update touch positions
+            this.touchState.touches.set(touch1.identifier, {
+                ...this.touchState.touches.get(touch1.identifier),
+                x: touch1.clientX,
+                y: touch1.clientY
+            });
+            this.touchState.touches.set(touch2.identifier, {
+                ...this.touchState.touches.get(touch2.identifier),
+                x: touch2.clientX,
+                y: touch2.clientY
+            });
+        }
+    }
+
+    _onTouchEnd(event) {
+        const now = performance.now();
+        
+        // Remove ended touches from tracking
+        const activeTouchIds = new Set(Array.from(event.touches).map(t => t.identifier));
+        for (const [id] of this.touchState.touches) {
+            if (!activeTouchIds.has(id)) {
+                const stored = this.touchState.touches.get(id);
+                
+                // Check if this was a quick tap (not moved, not held)
+                if (stored && !this.touchState.isPanning && !this.touchState.isPinching) {
+                    const duration = now - stored.startTime;
+                    const moveDistance = Math.sqrt(
+                        Math.pow(stored.x - stored.startX, 2) + 
+                        Math.pow(stored.y - stored.startY, 2)
+                    );
+
+                    if (duration < this.touchState.tapThreshold && 
+                        moveDistance < this.touchState.moveThreshold) {
+                        this._onSingleTap(stored);
+                    }
+                }
+                
+                this.touchState.touches.delete(id);
+            }
+        }
+
+        // Reset states when no touches remain
+        if (event.touches.length === 0) {
+            this.touchState.touching = false;
+            this.touchState.isPinching = false;
+            
+            // Re-enable interaction after a short delay to prevent accidental clicks
+            setTimeout(() => {
+                this.touchState.isPanning = false;
+                this.touchState.panDisablesInteraction = false;
+            }, 100);
+            
+            this._clearTouchTimers();
+        }
+    }
+
+    _onSingleTap(touchData) {
+        // Single tap acts like hover - update pointer and show hover info
+        this._updatePointerPosition(touchData.x, touchData.y);
+        this.touchState.lastTapTime = performance.now();
+        
+        // Briefly show hover for touch devices
+        if (this.hoverActive && this.hoverId !== null) {
+            // Force a hover update
+            this._updateCrosshairs(this.hoverId);
+        }
+    }
+
+    _onDoubleTap(touch) {
+        // Double tap acts like click-to-select
+        this._clearTouchTimers();
+        
+        if (this.selectOnClick && this.hoverId !== null) {
+            const v = this.model.row(this.hoverId)[this.state.selectBy];
+            this.state.toggleValue(v);
+        }
+    }
+
+    _onTouchHold(touch) {
+        // Hold acts like right-click
+        if (this.rightClickActive && this.hoverId !== null) {
+            const row = this.model.row(this.hoverId);
+            this._handleRightClick(row, this.hoverId);
+        }
+    }
+
+    _applyTouchPan(deltaX, deltaY) {
+        const sens = this.touchState.panSensitivity;
+        const yaw = -deltaX * sens;
+        const pitchDelta = -deltaY * sens;
+
+        if (yaw) this.camera.rotateY(yaw);
+        if (pitchDelta) {
+            const newPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch + pitchDelta));
+            this.camera.rotateX(newPitch - this.pitch);
+            this.pitch = newPitch;
+        }
+    }
+
+    _applyTouchZoom(deltaDistance) {
+        // Convert pinch distance to forward/backward movement
+        const zoomAmount = deltaDistance * this.touchState.zoomSensitivity;
+        
+        // Move camera forward/backward along its local Z axis
+        const zoomVector = new THREE.Vector3(0, 0, -zoomAmount);
+        zoomVector.applyQuaternion(this.camera.quaternion);
+        this.camera.position.add(zoomVector);
+    }
+
+    _getTouchDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    _updatePointerPosition(x, y) {
+        this.pointerScreen.x = x;
+        this.pointerScreen.y = y;
+        this.pointerNDC.x = (x / window.innerWidth) * 2 - 1;
+        this.pointerNDC.y = -(y / window.innerHeight) * 2 + 1;
+    }
+
+    _clearTouchTimers() {
+        if (this.touchState.singleTapTimer) {
+            clearTimeout(this.touchState.singleTapTimer);
+            this.touchState.singleTapTimer = null;
+        }
+        if (this.touchState.holdTimer) {
+            clearTimeout(this.touchState.holdTimer);
+            this.touchState.holdTimer = null;
+        }
     }
 
     /* ---------- right-click handling and template system ----- */
@@ -454,14 +716,16 @@ class PointCloud {
 
         this._moveCamera();
 
-        /* picking */
-        this.raycaster.setFromCamera(this.pointerNDC, this.camera);
-        const hit = this.raycaster.intersectObject(this.points, false)[0];
-        this.hoverId = hit ? hit.index : null;
+        /* picking - skip during touch interactions to improve performance */
+        if (!this.touchState.panDisablesInteraction) {
+            this.raycaster.setFromCamera(this.pointerNDC, this.camera);
+            const hit = this.raycaster.intersectObject(this.points, false)[0];
+            this.hoverId = hit ? hit.index : null;
 
-        if (this.hoverId !== this.prevHoverId) {
-            this.prevHoverId = this.hoverId;
-            this._updateCrosshairs(this.hoverId);
+            if (this.hoverId !== this.prevHoverId) {
+                this.prevHoverId = this.hoverId;
+                this._updateCrosshairs(this.hoverId);
+            }
         }
 
         if (this.uiManager) this.uiManager.updateUI();
