@@ -1,14 +1,10 @@
 {
-	"dataFile": "iris_pca.jsonl",
+	"dataFile": "digits.jsonl",
 	"numericalPrefix": "pc.",
 	"defaultColorColumn": "target_name",
 	"defaultSelectionColumn": "target_name",
 	"hoverColumns": [
-		"target_name",
-		"data.sepal length (cm)",
-		"data.sepal width (cm)",
-		"data.petal length (cm)",
-		"data.petal width (cm)"
+		"target_name"
 	],
 	"selectedPoints": {
 		"size": 5,
