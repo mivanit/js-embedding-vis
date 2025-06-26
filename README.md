@@ -1,11 +1,7 @@
 # js-embedding-vis
 
-3D interactive embedding visualization
+3D interactive embedding/point cloud visualization.
 
-see [`miv.name/js-embedding-vis/digits/`](https://miv.name/js-embedding-vis/digits/) for an iteractive demo (best viewed in fullscreen mode, kind of works on mobile but not great)
+See [`miv.name/js-embedding-vis/digits/`](https://miv.name/js-embedding-vis/digits/) for a demo. Best viewed in fullscreen mode, kind of works on mobile but not ideal.
 
-<iframe
-	src="https://miv.name/js-embedding-vis/digits/"
-	style="width: 100%; height: 100vh; border: none;"
-	>
-</iframe>
+[![](docs/screenshot.png)](https://miv.name/js-embedding-vis/digits/)
