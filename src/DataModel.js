@@ -77,7 +77,8 @@ class DataModel {
 			return result;
 		} catch (error) {
 			spinner.complete();
-			NOTIF.error('Failed to load data', error);
+			NOTIF.error('Failed to load data', error, 99999999999);
+			console.error("response text:", text.slice(0, 1000)); // Log first 1000 characters of the response text
 			throw error;
 		}
 	}

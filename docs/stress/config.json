@@ -1,5 +1,5 @@
 {
-	"dataFile": "stress.jsonl",
+	"dataFile": "https://drive.google.com/uc?export=download&id=1ZLFnERRB1RT5DX9odRQBAjF4XmBGFe2t",
 	"numericalPrefix": "pc.",
 	"defaultColorColumn": "target_name",
 	"defaultSelectionColumn": "target_name",
@@ -27,5 +27,10 @@
 		"rollSpeed": 0.02,
 		"mouseSensitivity": 0.002,
 		"sprintMultiplier": 3
+	},
+	"camera": {
+		"position": {
+			"z": 8	
+		}
 	}
 }

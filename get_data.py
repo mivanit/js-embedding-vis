@@ -62,11 +62,11 @@ def write_data_jsonl(
 
 
 def generate_rand_data(
-    n_samples: int = 1_000_000,
+    n_samples: int = 100_000,
     n_features: int = 5,
     n_classes: int = 10,
 ) -> DataRaw:
-    data: np.ndarray = np.random.rand(n_samples, n_features)
+    data: np.ndarray = np.random.randn(n_samples, n_features)
     target: np.ndarray = np.random.randint(0, n_classes, size=n_samples)
     target_names: list[str] = [f"class_{i}" for i in range(n_classes)]
     feature_names: list[str] = [f"feature_{i}" for i in range(n_features)]
