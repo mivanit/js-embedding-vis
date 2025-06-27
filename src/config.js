@@ -196,7 +196,12 @@ async function getConfig() {
 			LOADED_CONFIG = JSON.parse(JSON.stringify(CONFIG));
 		}
 	} catch (e) {
-		console.error("Config load error:", e);
+		// if the inline config is null, then failing to find config.json is fine
+		if (!INLINE_CONFIG) {
+			console.error("Config load error:", e);
+		} else {
+			console.warn("Failed to load config.json, but it's fine because an inline config was provided");
+		}
 		// On error, use defaults for comparison
 		LOADED_CONFIG = JSON.parse(JSON.stringify(CONFIG));
 	}
@@ -309,6 +314,11 @@ function generateURLParams() {
 	const differences = findConfigDifferences(CONFIG, LOADED_CONFIG);
 
 	for (const [path, value] of differences) {
+		// Skip the data field to prevent huge URLs
+		if (path === 'data') {
+			continue;
+		}
+
 		// Special handling for arrays
 		if (Array.isArray(value)) {
 			if (value.length > 0) {
@@ -332,6 +342,10 @@ function findConfigDifferences(current, base, prefix = '') {
 	const EPSILON = 0.001;
 
 	for (const key in current) {
+		if (key === "data") {
+			// Skip the data field to prevent huge URLs
+			continue;
+		}
 		const currentPath = prefix ? `${prefix}.${key}` : key;
 		const currentValue = current[key];
 		const baseValue = base[key];
