@@ -25,27 +25,58 @@ class DataModel {
 	row(idx) { return this.df.data[idx]; }
 
 	static async load(filename, numericalPrefix) {
-		const spinner = NOTIF.spinner('Downloading data...');
+		const spinner = NOTIF.spinner('Processing data...');
 
 		try {
-			const resp = await fetch(filename);
-			if (!resp.ok) {
-				const errorMsg = `Failed to load data: ${resp.status} ${resp.statusText}`;
+			let df;
+
+			// Check if dataFile is null - use embedded data
+			if (filename === null || filename === undefined) {
+				if (!CONFIG.data || !Array.isArray(CONFIG.data)) {
+					const errorMsg = 'No dataFile specified and no embedded data found in CONFIG.data';
+					spinner.complete();
+					NOTIF.error(errorMsg, new Error(errorMsg));
+					throw new Error(errorMsg);
+				}
+
+				// Use embedded data directly
+				const pbar = NOTIF.pbar('Processing embedded data...');
+				pbar.progress(0.2);
+
+				// Extract all unique column names from all rows
+				const allColumns = new Set();
+				for (const row of CONFIG.data) {
+					Object.keys(row).forEach(key => allColumns.add(key));
+				}
+
+				pbar.progress(0.6);
+				df = new DataFrame(CONFIG.data, Array.from(allColumns));
+				pbar.progress(0.9);
+
+			} else {
+				// Original file loading logic
 				spinner.complete();
-				NOTIF.error(errorMsg, new Error(errorMsg));
-				throw new Error(errorMsg);
+				const downloadSpinner = NOTIF.spinner('Downloading data...');
+
+				const resp = await fetch(filename);
+				if (!resp.ok) {
+					const errorMsg = `Failed to load data: ${resp.status} ${resp.statusText}`;
+					downloadSpinner.complete();
+					NOTIF.error(errorMsg, new Error(errorMsg));
+					throw new Error(errorMsg);
+				}
+
+				downloadSpinner.complete();
+				const pbar = NOTIF.pbar('Processing data...');
+
+				pbar.progress(0.1);
+				const text = await resp.text();
+
+				pbar.progress(0.3);
+				df = DataFrame.from_jsonl(text);
+				pbar.progress(0.6);
 			}
 
-			spinner.complete();
-			const pbar = NOTIF.pbar('Processing data...');
-
-			pbar.progress(0.1);
-			const text = await resp.text();
-
-			pbar.progress(0.3);
-			const df = DataFrame.from_jsonl(text);
-
-			pbar.progress(0.6);
 			const numeric = df.columns
 				.filter(c => c.startsWith(numericalPrefix))
 				.sort((a, b) => {
@@ -67,18 +98,23 @@ class DataModel {
 					return a.localeCompare(b);
 				});
 
-			pbar.progress(0.9);
 			const result = new DataModel(df, numeric);
 
-			pbar.progress(1.0);
-			pbar.complete();
-			NOTIF.success(`Loaded ${df.data.length} data points with ${numeric.length} dimensions`);
+			if (filename === null || filename === undefined) {
+				spinner.complete();
+				NOTIF.success(`Loaded ${df.data.length} embedded data points with ${numeric.length} dimensions`);
+			} else {
+				const pbar = NOTIF.pbar('Processing data...');
+				pbar.progress(1.0);
+				pbar.complete();
+				NOTIF.success(`Loaded ${df.data.length} data points with ${numeric.length} dimensions`);
+			}
 
 			return result;
 		} catch (error) {
 			spinner.complete();
 			NOTIF.error('Failed to load data', error, 99999999999);
-			console.error("response text:", text.slice(0, 1000)); // Log first 1000 characters of the response text
+			console.error("DataModel load error:", error);
 			throw error;
 		}
 	}

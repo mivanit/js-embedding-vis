@@ -12,17 +12,22 @@ docs/iris/iris.jsonl:
 docs/stress/stress.jsonl:
 	uv run get_data.py stress
 
+docs/iris-inline-data:
+	mkdir -p docs/iris-inline-data
+
 .PHONY: demo-data
-demo-data: docs/digits/digits.jsonl docs/iris/iris.jsonl docs/stress/stress.jsonl
+demo-data: docs/digits/digits.jsonl docs/iris/iris.jsonl docs/stress/stress.jsonl docs/iris-inline-data
 
 .PHONY: demo
 demo: bundle demo-data
 	cp bundled/index.html docs/iris/index.html
 	cp bundled/index.html docs/digits/index.html
 	cp bundled/index.html docs/stress/index.html
+	cp bundled/index.html docs/iris-inline-data/index.html
 	cp docs/_configs/iris.json docs/iris/config.json
 	cp docs/_configs/digits.json docs/digits/config.json
 	cp docs/_configs/stress.json docs/stress/config.json
+	cp docs/_configs/iris-inline-data.json docs/iris-inline-data/config.json
 
 .PHONY: clean
 clean:
@@ -30,3 +35,4 @@ clean:
 	rm -rf docs/digits
 	rm -rf docs/iris
 	rm -rf docs/stress
+	rm -rf docs/iris-inline-data

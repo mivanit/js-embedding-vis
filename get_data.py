@@ -5,6 +5,7 @@
 #   "scikit-learn",
 # ]
 # ///
+"data loading/generation script for demo"
 
 from pathlib import Path
 import json
