@@ -79,7 +79,7 @@ def write_inlined_config(
         f.write(inlined_html)
 
 
-if __name__ == "__main__":
+def main() -> None:
     import argparse
 
     arg_parser: argparse.ArgumentParser = argparse.ArgumentParser(
@@ -109,3 +109,6 @@ if __name__ == "__main__":
         cfg_path=args.cfg_path,
         out_path=args.out_path,
     )
+
+if __name__ == "__main__":
+    main()
