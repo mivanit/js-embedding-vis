@@ -1,5 +1,5 @@
 from js_embedding_vis.inline_cfg import (
-	main,
+    main,
 )
 
 if __name__ == "__main__":

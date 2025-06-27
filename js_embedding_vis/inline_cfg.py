@@ -25,19 +25,20 @@ def fetch_jev_remote(url: str = HTML_URL) -> str:
         "User-Agent": "python-urllib",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
-        "Expires": "0"
+        "Expires": "0",
     }
     with urlopen(
         Request(url, headers=headers),
     ) as resp:
         return resp.read().decode(resp.headers.get_content_charset("utf-8"))
 
+
 def fetch_jev_pkg() -> str:
     import importlib.resources
     import js_embedding_vis
+
     index_html_pkg_path: Path = (
-        Path(importlib.resources.files(js_embedding_vis))
-        / "index.html"
+        Path(importlib.resources.files(js_embedding_vis)) / "index.html"
     )
     return index_html_pkg_path.read_text(encoding="utf-8")
 
@@ -50,9 +51,8 @@ def fetch_jev(
     elif src == "pkg":
         return fetch_jev_pkg()
     else:
-        raise ValueError(
-            f"Invalid source '{src}'. Expected 'remote' or 'pkg'."
-        )
+        raise ValueError(f"Invalid source '{src}'. Expected 'remote' or 'pkg'.")
+
 
 def inline_config(
     cfg: dict | str,
@@ -156,6 +156,7 @@ def main() -> None:
         out_path=args.out_path,
         html_src=args.html_src,
     )
+
 
 if __name__ == "__main__":
     main()
