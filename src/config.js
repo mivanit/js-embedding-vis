@@ -1,5 +1,14 @@
+var INLINE_CONFIG = null; // For inline config overrides
+
+/*$$$INLINE_CONFIG$$$*/
+
+
 /* global, mutable CONFIG + helper to merge an optional config.json */
 function getDefaultConfig() {
+	if (INLINE_CONFIG) {
+		// If INLINE_CONFIG is set, use it as the base
+		return INLINE_CONFIG;
+	}
 	return {
 		// Data loading
 		dataFile: "pca.jsonl",
@@ -159,6 +168,7 @@ function getDefaultConfig() {
 let CONFIG = getDefaultConfig();
 let LOADED_CONFIG = null; // Store the config as loaded from file for comparison
 let URL_UPDATE_TIMEOUT = null;
+
 
 /**
  * Load config.json (if present) and merge into CONFIG.
