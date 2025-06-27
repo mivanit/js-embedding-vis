@@ -4,8 +4,7 @@ from urllib.request import Request, urlopen
 import json
 
 HTML_URL: Final[str] = (
-    "https://raw.githubusercontent.com/"
-    "mivanit/js-embedding-vis/refs/heads/main/bundled/index.html"
+    "https://raw.githubusercontent.com/mivanit/js-embedding-vis/refs/heads/main/bundled/index.html"
 )
 
 REPLACE_CONFIG_STRING: Final[str] = "/*$$$INLINE_CONFIG$$$*/"
@@ -20,8 +19,14 @@ def fetch_jev_html(url: str = HTML_URL) -> str:
      - `str`
         Raw HTML contents of the file
     """
+    headers = {
+        "User-Agent": "python-urllib",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
     with urlopen(
-        Request(url, headers={"User-Agent": "python-urllib"}),
+        Request(url, headers=headers),
     ) as resp:
         return resp.read().decode(resp.headers.get_content_charset("utf-8"))
 
