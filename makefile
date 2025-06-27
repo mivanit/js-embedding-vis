@@ -1,32 +1,35 @@
+BUNDLED_LOC = bundled/index.html
+PYTHON = uv run python
 
 .PHONY: bundle
 bundle:
-	uv run dev_scripts/bundle.py
+	$(PYTHON) dev_scripts/bundle.py
+	cp $(BUNDLED_LOC) js_embedding_vis/index.html
 
 docs/digits/digits.jsonl:
-	uv run dev_scripts/get_data.py digits
+	$(PYTHON) dev_scripts/get_data.py digits
 
 docs/iris/iris.jsonl:
-	uv run dev_scripts/get_data.py iris
+	$(PYTHON) dev_scripts/get_data.py iris
 
 docs/stress/stress.jsonl:
-	uv run dev_scripts/get_data.py stress
+	$(PYTHON) dev_scripts/get_data.py stress
 
 docs/iris-inline-data:
 	mkdir -p docs/iris-inline-data
 
 docs/iris-inline-cfg/index.html:
-	uv run -m js_embedding_vis_py --cfg-path docs/_configs/iris-inline-data.json --out-path docs/iris-inline-cfg/index.html
+	$(PYTHON) -m js_embedding_vis --cfg-path docs/_configs/iris-inline-data.json --out-path docs/iris-inline-cfg/index.html
 
 .PHONY: demo-data
 demo-data: docs/digits/digits.jsonl docs/iris/iris.jsonl docs/stress/stress.jsonl docs/iris-inline-data docs/iris-inline-cfg/index.html
 
 .PHONY: demo
 demo: bundle demo-data
-	cp bundled/index.html docs/iris/index.html
-	cp bundled/index.html docs/digits/index.html
-	cp bundled/index.html docs/stress/index.html
-	cp bundled/index.html docs/iris-inline-data/index.html
+	cp $(BUNDLED_LOC) docs/iris/index.html
+	cp $(BUNDLED_LOC) docs/digits/index.html
+	cp $(BUNDLED_LOC) docs/stress/index.html
+	cp $(BUNDLED_LOC) docs/iris-inline-data/index.html
 	cp docs/_configs/iris.json docs/iris/config.json
 	cp docs/_configs/digits.json docs/digits/config.json
 	cp docs/_configs/stress.json docs/stress/config.json
@@ -39,3 +42,4 @@ clean:
 	rm -rf docs/iris
 	rm -rf docs/stress
 	rm -rf docs/iris-inline-data
+	rm -rf docs/iris-inline-cfg

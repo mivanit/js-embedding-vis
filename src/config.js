@@ -5,11 +5,7 @@ var INLINE_CONFIG = null; // For inline config overrides
 
 /* global, mutable CONFIG + helper to merge an optional config.json */
 function getDefaultConfig() {
-	if (INLINE_CONFIG) {
-		// If INLINE_CONFIG is set, use it as the base
-		return INLINE_CONFIG;
-	}
-	return {
+	let default_cfg = {
 		// Data loading
 		dataFile: "pca.jsonl",
 		numericalPrefix: "pc.",
@@ -163,6 +159,13 @@ function getDefaultConfig() {
 			help: "This tool lets you visualize high-dimensional data in 3D space."
 		},
 	}
+
+	if (INLINE_CONFIG) {
+		// If INLINE_CONFIG is set, merge it into the default config
+		deepMerge(default_cfg, INLINE_CONFIG);
+		console.log("Merged inline config overrides");
+	}
+	return default_cfg;
 }
 
 let CONFIG = getDefaultConfig();
