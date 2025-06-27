@@ -15,8 +15,12 @@ docs/stress/stress.jsonl:
 docs/iris-inline-data:
 	mkdir -p docs/iris-inline-data
 
+
+docs/iris-inline-cfg/index.html:
+	uv run inline_cfg.py --cfg-path docs/_configs/iris-inline-data.json --out-path docs/iris-inline-cfg/index.html
+
 .PHONY: demo-data
-demo-data: docs/digits/digits.jsonl docs/iris/iris.jsonl docs/stress/stress.jsonl docs/iris-inline-data
+demo-data: docs/digits/digits.jsonl docs/iris/iris.jsonl docs/stress/stress.jsonl docs/iris-inline-data docs/iris-inline-cfg/index.html
 
 .PHONY: demo
 demo: bundle demo-data
