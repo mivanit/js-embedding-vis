@@ -1,23 +1,22 @@
 
 .PHONY: bundle
 bundle:
-	uv run bundle.py
+	uv run dev_scripts/bundle.py
 
 docs/digits/digits.jsonl:
-	uv run get_data.py digits
+	uv run dev_scripts/get_data.py digits
 
 docs/iris/iris.jsonl:
-	uv run get_data.py iris
+	uv run dev_scripts/get_data.py iris
 
 docs/stress/stress.jsonl:
-	uv run get_data.py stress
+	uv run dev_scripts/get_data.py stress
 
 docs/iris-inline-data:
 	mkdir -p docs/iris-inline-data
 
-
 docs/iris-inline-cfg/index.html:
-	uv run inline_cfg.py --cfg-path docs/_configs/iris-inline-data.json --out-path docs/iris-inline-cfg/index.html
+	uv run -m js_embedding_vis_py --cfg-path docs/_configs/iris-inline-data.json --out-path docs/iris-inline-cfg/index.html
 
 .PHONY: demo-data
 demo-data: docs/digits/digits.jsonl docs/iris/iris.jsonl docs/stress/stress.jsonl docs/iris-inline-data docs/iris-inline-cfg/index.html

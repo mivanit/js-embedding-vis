@@ -1,0 +1,29 @@
+[project]
+	name = "js-embedding-vis"
+	version = "0.1.0"
+	description = "python package for easy shipping of js-embedding-vis"
+	requires-python = ">=3.9"
+	readme = "README.md"
+	dependencies = []
+
+[project.urls]
+	Homepage = "https://miv.name/js-embedding-vis"
+	Documentation = "https://miv.name/js-embedding-vis"
+	Repository = "https://github.com/mivanit/js-embedding-vis"
+	Issues = "https://github.com/mivanit/js-embedding-vis/issues"
+
+[dependency-groups]
+	dev = [
+		# for dev_scripts/bundle.py
+		"muutils>=0.8.10",
+		# for dev_scripts/get_data.py
+		"numpy",
+		"scikit-learn",
+	]
+
+[build-system]
+	requires = ["hatchling"]
+	build-backend = "hatchling.build"
+
+[tool.uv]
+	default-groups = ["dev"]
