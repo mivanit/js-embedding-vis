@@ -9,7 +9,7 @@
 from pathlib import Path
 import tomllib
 
-from muutils.web.bundle_html import InlineConfig, inline_html_file, inline_html_assets
+from muutils.web.bundle_html import InlineConfig, inline_html_assets
 
 if __name__ == "__main__":
     # parse args
@@ -57,9 +57,9 @@ if __name__ == "__main__":
     )
 
     # add version info
-    version: str = tomllib.loads(
-        Path("pyproject.toml").read_text(encoding="utf-8")
-    )["project"]["version"]
+    version: str = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))[
+        "project"
+    ]["version"]
     html_new = html_new.replace(
         "/*$$$VERSION$$$*/",
         f"version: v{version}",
@@ -69,4 +69,3 @@ if __name__ == "__main__":
     out_path: Path = Path(args.out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html_new)
-
