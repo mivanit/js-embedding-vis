@@ -666,6 +666,85 @@
 		font-size: 10px;
 		color: #00ccff;
 	}
+	
+	/* Info box popup styles (middle-click) */
+	.info-box {
+		position: fixed;
+		background: rgba(0, 0, 0, 0.9);
+		border: 2px solid #ffff00;
+		border-radius: 6px;
+		padding: 6px;
+		color: #00ff00;
+		font-family: 'Courier New', monospace;
+		font-size: 11px;
+		z-index: 1000;
+		cursor: move;
+		user-select: none;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+	}
+	
+	.info-box-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 4px;
+	}
+	
+	.info-box-title {
+		color: #00ccff;
+		font-size: 11px;
+		cursor: pointer;
+	}
+	
+	.info-box-title:hover {
+		text-decoration: underline;
+	}
+	
+	.info-box-close {
+		color: #ff4444;
+		cursor: pointer;
+		font-weight: bold;
+		font-size: 14px;
+		line-height: 1;
+		margin-left: 8px;
+	}
+	
+	.info-box-close:hover {
+		color: #ff6666;
+	}
+	
+	.info-box-content {
+		color: #00ff00;
+	}
+	
+	.info-box-content img {
+		max-width: 100%;
+		height: auto;
+		display: block;
+	}
+	
+	/* SVG overlay for info box connection lines */
+	#info-box-lines {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		z-index: 999;
+	}
+	
+	.info-box-line {
+		stroke: #ffff00;
+		stroke-width: 2;
+		stroke-opacity: 0.7;
+		fill: none;
+	}
+	
+	.info-box-anchor {
+		fill: #ffff00;
+		fill-opacity: 0.8;
+	}
 	</style>
 	<!-- end 'style.css' -->
 		<!-- begin 'notif.css' -->
@@ -935,10 +1014,24 @@
 				}
 			},
 	
+			// Middle-click info box configuration
+			middleClick: {
+				enabled: true,
+				// Title template for the info box header
+				title: "{activation.cls}",
+				// HTML content template - fully customizable
+				// Use {_index} for point index, useful for image filenames
+				content: '<div style="max-width: 300px; max-height: 300px; overflow: auto;"><pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">{activation.cls}</pre></div>'
+			},
+	
 			info: {
 				title: "Embedding Explorer",
 				help: "This tool lets you visualize high-dimensional data in 3D space."
 			},
+	
+			// Highlight groups - custom groups to highlight via URL or config
+			// Format: { groupName: { col: "columnName", values: ["val1", "val2"], color: "#ff0000" } }
+			highlightGroups: {},
 		}
 	
 		if (INLINE_CONFIG) {
@@ -1011,12 +1104,45 @@
 	 * Parse URL parameters and update CONFIG
 	 * Supports nested paths like: ?axes.x=2&selectedPoints.size=8&panels.menu=true
 	 * Also supports arrays like: ?selectedValues=value1,value2,value3
+	 * Also supports highlight groups like: ?highlight.group1.col=colname&highlight.group1.values=val1,val2
 	 */
 	function parseURLParams() {
 		const params = new URLSearchParams(window.location.search);
 	
+		// First pass: collect highlight group parameters
+		const highlightParams = new Map(); // groupName -> {col, values, color}
+	
 		for (const [key, value] of params) {
-			setNestedConfigValue(CONFIG, key, parseConfigValue(value));
+			if (key.startsWith('highlight.')) {
+				// Parse: highlight.groupname.property
+				const parts = key.split('.');
+				if (parts.length === 3) {
+					const [, groupName, property] = parts;
+					if (!highlightParams.has(groupName)) {
+						highlightParams.set(groupName, {});
+					}
+					const group = highlightParams.get(groupName);
+	
+					if (property === 'col') {
+						group.col = value;
+					} else if (property === 'values') {
+						group.values = value.split(',').map(v => v.trim());
+					} else if (property === 'color') {
+						group.color = value;
+					}
+				}
+			} else {
+				// Existing behavior for non-highlight params
+				setNestedConfigValue(CONFIG, key, parseConfigValue(value));
+			}
+		}
+	
+		// Merge collected highlight groups into CONFIG
+		for (const [groupName, groupConfig] of highlightParams) {
+			if (groupConfig.col && groupConfig.values) {
+				CONFIG.highlightGroups[groupName] = groupConfig;
+				console.log(`URL param override: highlight group "${groupName}" = col:${groupConfig.col}, values:[${groupConfig.values.join(',')}]${groupConfig.color ? ', color:' + groupConfig.color : ''}`);
+			}
 		}
 	}
 	
@@ -1100,6 +1226,11 @@
 				continue;
 			}
 	
+			// Skip highlightGroups - handled separately below
+			if (path.startsWith('highlightGroups')) {
+				continue;
+			}
+	
 			// Special handling for arrays
 			if (Array.isArray(value)) {
 				if (value.length > 0) {
@@ -1107,6 +1238,21 @@
 				}
 			} else {
 				params.set(path, value.toString());
+			}
+		}
+	
+		// Handle highlightGroups specially with highlight.groupname.property format
+		if (CONFIG.highlightGroups) {
+			for (const [groupName, groupConfig] of Object.entries(CONFIG.highlightGroups)) {
+				if (groupConfig.col) {
+					params.set(`highlight.${groupName}.col`, groupConfig.col);
+				}
+				if (groupConfig.values && groupConfig.values.length > 0) {
+					params.set(`highlight.${groupName}.values`, groupConfig.values.join(','));
+				}
+				if (groupConfig.color) {
+					params.set(`highlight.${groupName}.color`, groupConfig.color);
+				}
 			}
 		}
 	
@@ -1875,11 +2021,59 @@
 			// Cache for expensive computations
 			this._colorCache = new Map();
 			this._numericRangeCache = new Map();
+	
+			// Cache for highlight group colors
+			this._highlightGroupColors = new Map();
+			this._initHighlightGroupColors();
+		}
+	
+		/** Initialize colors for highlight groups */
+		_initHighlightGroupColors() {
+			this._highlightGroupColors.clear();
+			if (CONFIG.highlightGroups) {
+				for (const [groupName, groupConfig] of Object.entries(CONFIG.highlightGroups)) {
+					if (groupConfig.color) {
+						// Use specified color
+						this._highlightGroupColors.set(groupName, new THREE.Color(groupConfig.color));
+					} else {
+						// Generate a random color
+						const randomHex = generateDistinctColors(1)[0];
+						this._highlightGroupColors.set(groupName, new THREE.Color(randomHex));
+					}
+				}
+			}
+		}
+	
+		/** Check if a row matches any highlight group, returns first match */
+		_getHighlightGroup(row) {
+			if (!CONFIG.highlightGroups) return null;
+	
+			// Iterate in object key order (first defined = first priority)
+			for (const [groupName, groupConfig] of Object.entries(CONFIG.highlightGroups)) {
+				const columnValue = row[groupConfig.col];
+				if (groupConfig.values && groupConfig.values.includes(String(columnValue))) {
+					return groupName;
+				}
+			}
+			return null;
 		}
 	
 		/** colour & selection attributes for a given row id */
 		attrs(rowId) {
 			const row = this.model.row(rowId);
+	
+			// Check highlight groups FIRST (supersedes selection)
+			const highlightGroup = this._getHighlightGroup(row);
+			if (highlightGroup) {
+				const highlightColor = this._highlightGroupColors.get(highlightGroup);
+				return {
+					r: highlightColor.r,
+					g: highlightColor.g,
+					b: highlightColor.b,
+					size: this.state.selSize,
+					opacity: this.state.selOp
+				};
+			}
 	
 			// Check if this point should be treated as selected
 			const selectValue = row[this.state.selectBy];
@@ -1983,6 +2177,17 @@
 			this.palette = generateDistinctColors(CONFIG.colors.paletteSize);
 			// Clear color cache when palette changes
 			this._colorCache.clear();
+	
+			// Also randomize highlight group colors (unless explicitly specified)
+			if (CONFIG.highlightGroups) {
+				for (const [groupName, groupConfig] of Object.entries(CONFIG.highlightGroups)) {
+					if (!groupConfig.color) {
+						// Only randomize auto-generated colors, not user-specified ones
+						const randomHex = generateDistinctColors(1)[0];
+						this._highlightGroupColors.set(groupName, new THREE.Color(randomHex));
+					}
+				}
+			}
 		}
 	
 		// Clear caches when column changes
@@ -2255,7 +2460,8 @@
 	        sc.insertAdjacentHTML('beforeend', `
 	        <div class="shortcut-link" data-action="hover-toggle">k – hover UI <span class="status-indicator ${CONFIG.interaction.hoverActive ? 'status-enabled' : 'status-disabled'}" id="hover-status">(${CONFIG.interaction.hoverActive ? 'enabled' : 'disabled'})</span></div>
 	        <div class="shortcut-link" data-action="click-select-toggle">b – click-select <span class="status-indicator ${CONFIG.interaction.selectOnClick ? 'status-enabled' : 'status-disabled'}" id="click-select-status">(${CONFIG.interaction.selectOnClick ? 'enabled' : 'disabled'})</span></div>
-	        <div class="shortcut-link" data-action="right-click-toggle">o – right-click <span class="status-indicator ${CONFIG.interaction.rightClickActive ? 'status-enabled' : 'status-disabled'}" id="right-click-status">(${CONFIG.interaction.rightClickActive ? 'enabled' : 'disabled'})</span></div>`);
+	        <div class="shortcut-link" data-action="right-click-toggle">o – right-click <span class="status-indicator ${CONFIG.interaction.rightClickActive ? 'status-enabled' : 'status-disabled'}" id="right-click-status">(${CONFIG.interaction.rightClickActive ? 'enabled' : 'disabled'})</span></div>
+	        <div class="shortcut-link" data-action="middle-click-toggle">p – middle-click <span class="status-indicator ${CONFIG.middleClick.enabled ? 'status-enabled' : 'status-disabled'}" id="middle-click-status">(${CONFIG.middleClick.enabled ? 'enabled' : 'disabled'})</span></div>`);
 	
 	        sc.addEventListener('click', e => {
 	            const target = e.target.closest('[data-action]');
@@ -2278,6 +2484,10 @@
 	                CONFIG.interaction.rightClickActive = !CONFIG.interaction.rightClickActive;
 	                this.pointCloud.rightClickActive = CONFIG.interaction.rightClickActive;
 	                this._updateStatusIndicator('right-click-status', CONFIG.interaction.rightClickActive);
+	                updateURL(); // Sync to URL
+	            } else if (action === 'middle-click-toggle') {
+	                CONFIG.middleClick.enabled = !CONFIG.middleClick.enabled;
+	                this._updateStatusIndicator('middle-click-status', CONFIG.middleClick.enabled);
 	                updateURL(); // Sync to URL
 	            } else {
 	                const entry = Object.entries(this.uiConfig)
@@ -2807,6 +3017,13 @@
 	                this._updateStatusIndicator('right-click-status', CONFIG.interaction.rightClickActive);
 	                updateURL(); // Sync to URL
 	            }
+	
+	            /* middle-click toggle */
+	            if (e.code === 'KeyP') {
+	                CONFIG.middleClick.enabled = !CONFIG.middleClick.enabled;
+	                this._updateStatusIndicator('middle-click-status', CONFIG.middleClick.enabled);
+	                updateURL(); // Sync to URL
+	            }
 	        });
 	    }
 	
@@ -3042,6 +3259,11 @@
 	            panSensitivity: 0.002
 	        };
 	
+	        /* ── info box state (middle-click) ────────────────────── */
+	        this.infoBoxes = new Map();
+	        this.infoBoxIdCounter = 0;
+	        this.infoBoxDragging = null;
+	
 	        /* ── colour / selection state ─────────────────────────── */
 	        this.state = new VisState(model);
 	        this.selMgr = new SelectionManager(model, this.state);
@@ -3108,6 +3330,49 @@
 	
 	            const row = this.model.row(this.hoverId);
 	            this._handleRightClick(row, this.hoverId);
+	        });
+	
+	        /* middle-click handler for info boxes */
+	        window.addEventListener('auxclick', (e) => {
+	            if (e.button !== 1) return;
+	            e.preventDefault();
+	            const infoBox = e.target.closest('.info-box');
+	            if (infoBox) {
+	                this._removeInfoBox(parseInt(infoBox.dataset.boxId));
+	                return;
+	            }
+	            if (!CONFIG.middleClick.enabled || this.hoverId == null) return;
+	            const row = this.model.row(this.hoverId);
+	            this._createInfoBox(row, this.hoverId, e.clientX, e.clientY);
+	        });
+	
+	        /* info box dragging */
+	        window.addEventListener('mousedown', (e) => {
+	            if (e.button !== 0) return;
+	            const header = e.target.closest('.info-box-header');
+	            if (!header) return;
+	            const infoBox = header.closest('.info-box');
+	            if (!infoBox) return;
+	            const rect = infoBox.getBoundingClientRect();
+	            this.infoBoxDragging = {
+	                boxId: parseInt(infoBox.dataset.boxId),
+	                offsetX: e.clientX - rect.left,
+	                offsetY: e.clientY - rect.top
+	            };
+	            e.preventDefault();
+	        });
+	
+	        window.addEventListener('mousemove', (e) => {
+	            if (!this.infoBoxDragging) return;
+	            const box = this.infoBoxes.get(this.infoBoxDragging.boxId);
+	            if (!box) return;
+	            box.element.style.left = (e.clientX - this.infoBoxDragging.offsetX) + 'px';
+	            box.element.style.top = (e.clientY - this.infoBoxDragging.offsetY) + 'px';
+	            this._updateInfoBoxLine(this.infoBoxDragging.boxId);
+	        });
+	
+	        window.addEventListener('mouseup', () => {
+	            this.infoBoxDragging = null;
 	        });
 	
 	        /* ── Touch event handlers ─────────────────────────────── */
@@ -3408,6 +3673,9 @@
 	            // All row data (flattened with dot notation for nested objects)
 	            ...this._flattenObject(row),
 	
+	            // Point index (for image filenames, etc.)
+	            '_index': pointId,
+	
 	            // Coordinate data
 	            'coord.x': coords.x,
 	            'coord.y': coords.y,
@@ -3501,6 +3769,80 @@
 	        const div = document.createElement('div');
 	        div.textContent = text;
 	        return div.innerHTML;
+	    }
+	
+	    /* ---------- info box methods (middle-click) ------------- */
+	    _createInfoBox(row, pointId, clickX, clickY) {
+	        const boxId = this.infoBoxIdCounter++;
+	        const templateData = this._buildTemplateData(row, pointId);
+	        const title = this._replaceTemplate(CONFIG.middleClick.title, templateData);
+	        const content = this._replaceTemplate(CONFIG.middleClick.content, templateData);
+	
+	        const box = document.createElement('div');
+	        box.className = 'info-box';
+	        box.dataset.boxId = boxId;
+	        box.style.left = clickX + 'px';
+	        box.style.top = clickY + 'px';
+	        box.innerHTML = `
+	            <div class="info-box-header">
+	                <span class="info-box-title">${this._escapeHtml(title)}</span>
+	                <span class="info-box-close">×</span>
+	            </div>
+	            <div class="info-box-content">${content}</div>`;
+	        box.querySelector('.info-box-close').addEventListener('click', (e) => { e.stopPropagation(); this._removeInfoBox(boxId); });
+	        box.querySelector('.info-box-title').addEventListener('click', (e) => { e.stopPropagation(); this._handleRightClick(row, pointId); });
+	        document.getElementById('info-boxes').appendChild(box);
+	
+	        const svg = document.getElementById('info-box-lines');
+	        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+	        line.classList.add('info-box-line');
+	        line.dataset.boxId = boxId;
+	        svg.appendChild(line);
+	
+	        const anchor = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+	        anchor.classList.add('info-box-anchor');
+	        anchor.setAttribute('r', '4');
+	        anchor.dataset.boxId = boxId;
+	        svg.appendChild(anchor);
+	
+	        this.infoBoxes.set(boxId, { element: box, lineElement: line, anchorElement: anchor, pointId, row });
+	        this._updateInfoBoxLine(boxId);
+	    }
+	
+	    _removeInfoBox(boxId) {
+	        const box = this.infoBoxes.get(boxId);
+	        if (!box) return;
+	        box.element.remove();
+	        box.lineElement.remove();
+	        box.anchorElement.remove();
+	        this.infoBoxes.delete(boxId);
+	    }
+	
+	    _updateInfoBoxLine(boxId) {
+	        const box = this.infoBoxes.get(boxId);
+	        if (!box) return;
+	        const a = this.state.axis;
+	        const pointPos = new THREE.Vector3(
+	            this.model.getCoord(box.pointId, a.x),
+	            this.model.getCoord(box.pointId, a.y),
+	            this.model.getCoord(box.pointId, a.z)
+	        );
+	        pointPos.project(this.camera);
+	        const pointX = (pointPos.x * 0.5 + 0.5) * window.innerWidth;
+	        const pointY = (-pointPos.y * 0.5 + 0.5) * window.innerHeight;
+	        const rect = box.element.getBoundingClientRect();
+	        box.lineElement.setAttribute('x1', pointX);
+	        box.lineElement.setAttribute('y1', pointY);
+	        box.lineElement.setAttribute('x2', rect.left);
+	        box.lineElement.setAttribute('y2', rect.top + rect.height / 2);
+	        box.anchorElement.setAttribute('cx', pointX);
+	        box.anchorElement.setAttribute('cy', pointY);
+	    }
+	
+	    _updateAllInfoBoxLines() {
+	        for (const boxId of this.infoBoxes.keys()) {
+	            this._updateInfoBoxLine(boxId);
+	        }
 	    }
 	
 	    /* ========================================================= */
@@ -3775,6 +4117,7 @@
 	            }
 	        }
 	
+	        this._updateAllInfoBoxLines();
 	        if (this.uiManager) this.uiManager.updateUI();
 	        this.renderer.render(this.scene, this.camera);
 	    }
@@ -4028,6 +4371,7 @@
 				<p>K - Toggle hover tooltips when pointing at data points</p>
 				<p>B - Toggle click-to-select functionality</p>
 				<p>O - Toggle right-click actions for point details</p>
+				<p>P - Toggle middle-click info boxes</p>
 			</div>
 			<div class="help-section">
 				<h3>Data Interaction</h3>
@@ -4035,6 +4379,7 @@
 				<p>V - Cycle through available selection columns</p>
 				<p>Click - Select/deselect point (when click-select enabled)</p>
 				<p>Right-click - Open point data/URL (when right-click enabled)</p>
+				<p>Middle-click - Create info box for point (when enabled)</p>
 				<p>Hover - Show point details tooltip (when hover enabled)</p>
 			</div>
 			<div class="help-section">
@@ -4226,6 +4571,9 @@
 				NOTIF.success('Ready! Press H for help.');
 			});
 		</script>
+		<!-- Info box containers for middle-click functionality -->
+		<svg id="info-box-lines"></svg>
+		<div id="info-boxes"></div>
 </body>
 
 </html>
