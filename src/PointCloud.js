@@ -52,6 +52,7 @@ class PointCloud {
         this.infoBoxes = new Map();
         this.infoBoxIdCounter = 0;
         this.infoBoxDragging = null;
+        this.pixelData = null;
 
         /* ── colour / selection state ─────────────────────────── */
         this.state = new VisState(model);
@@ -636,7 +637,19 @@ class PointCloud {
         this._setupRenderer();
         this._setupInput();
         this._buildGeometry();
+        this._loadPixelData();
         this._animate();
+    }
+
+    _loadPixelData() {
+        if (!CONFIG.middleClick.pixelDataFile) return;
+        fetch(CONFIG.middleClick.pixelDataFile)
+            .then(r => r.text())
+            .then(text => {
+                this.pixelData = text.trim().split('\n').map(line => JSON.parse(line));
+                console.log(`Loaded pixel data: ${this.pixelData.length} entries`);
+            })
+            .catch(err => console.warn('Failed to load pixel data:', err));
     }
 
     _setupRenderer() {

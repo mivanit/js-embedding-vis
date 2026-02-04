@@ -90,11 +90,18 @@ if __name__ == "__main__":
                 output_path=Path("docs/iris/iris.jsonl"),
             )
         case "digits":
+            digits = datasets.load_digits()
+            # Generate main data file (without pixels)
             write_data_jsonl(
-                data_raw=datasets.load_digits(),
+                data_raw=digits,
                 output_path=Path("docs/digits/digits.jsonl"),
                 include_raw=False,
             )
+            # Generate separate pixel data file
+            pixel_path = Path("docs/digits/digits-pixels.jsonl")
+            with pixel_path.open("w") as f:
+                for image in digits.images:
+                    f.write(json.dumps(image.flatten().tolist()) + "\n")
         case "stress":
             point_count: int = 100_000
             write_data_jsonl(
