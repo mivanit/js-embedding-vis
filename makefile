@@ -1,12 +1,13 @@
 BUNDLED_LOC = bundled/index.html
-PYTHON = uv run python
+PYTHON = uv run
 
 .PHONY: bundle
 bundle:
 	$(PYTHON) dev_scripts/bundle.py
 	cp $(BUNDLED_LOC) js_embedding_vis/index.html
 
-docs/digits/digits.jsonl:
+# digits target generates both JSONL and images in one command
+docs/digits/digits.jsonl docs/digits/images:
 	$(PYTHON) dev_scripts/get_data.py digits
 
 docs/iris/iris.jsonl:

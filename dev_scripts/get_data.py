@@ -3,6 +3,7 @@
 # dependencies = [
 #   "numpy",
 #   "scikit-learn",
+#   "pillow",
 # ]
 # ///
 "data loading/generation script for demo"
@@ -90,6 +91,8 @@ if __name__ == "__main__":
                 output_path=Path("docs/iris/iris.jsonl"),
             )
         case "digits":
+            from PIL import Image
+
             digits = datasets.load_digits()
             # Generate main data file (without pixels)
             write_data_jsonl(
@@ -97,11 +100,13 @@ if __name__ == "__main__":
                 output_path=Path("docs/digits/digits.jsonl"),
                 include_raw=False,
             )
-            # Generate separate pixel data file
-            pixel_path = Path("docs/digits/digits-pixels.jsonl")
-            with pixel_path.open("w") as f:
-                for image in digits.images:
-                    f.write(json.dumps(image.flatten().tolist()) + "\n")
+            # Generate digit images (native 8x8, CSS handles scaling)
+            images_dir = Path("docs/digits/images")
+            images_dir.mkdir(exist_ok=True)
+            for idx, image in enumerate(digits.images):
+                img_array = (image / 16 * 255).astype(np.uint8)
+                img = Image.fromarray(img_array, mode="L")
+                img.save(images_dir / f"{idx}.png")
         case "stress":
             point_count: int = 100_000
             write_data_jsonl(

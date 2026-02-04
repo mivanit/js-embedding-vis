@@ -160,13 +160,8 @@ function getDefaultConfig() {
 			// Title template for the info box header
 			title: "{activation.cls}",
 			// HTML content template - fully customizable
-			content: '<div style="max-width: 300px; max-height: 300px; overflow: auto;"><pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">{activation.cls}</pre></div>',
-			// Optional: pixel data file for canvas rendering (e.g., "digits-pixels.jsonl")
-			pixelDataFile: null,
-			// Grid size for pixel rendering (e.g., 8 for 8x8 images)
-			pixelSize: 8,
-			// Max pixel value for normalization (e.g., 16 for sklearn digits, 255 for MNIST)
-			pixelMax: 16
+			// Use {_index} for point index, useful for image filenames
+			content: '<div style="max-width: 300px; max-height: 300px; overflow: auto;"><pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">{activation.cls}</pre></div>'
 		},
 
 		info: {
