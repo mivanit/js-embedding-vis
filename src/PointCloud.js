@@ -48,6 +48,11 @@ class PointCloud {
             panSensitivity: 0.002
         };
 
+        /* ── info box state (middle-click) ────────────────────── */
+        this.infoBoxes = new Map();
+        this.infoBoxIdCounter = 0;
+        this.infoBoxDragging = null;
+
         /* ── colour / selection state ─────────────────────────── */
         this.state = new VisState(model);
         this.selMgr = new SelectionManager(model, this.state);
@@ -114,6 +119,49 @@ class PointCloud {
 
             const row = this.model.row(this.hoverId);
             this._handleRightClick(row, this.hoverId);
+        });
+
+        /* middle-click handler for info boxes */
+        window.addEventListener('auxclick', (e) => {
+            if (e.button !== 1) return;
+            e.preventDefault();
+            const infoBox = e.target.closest('.info-box');
+            if (infoBox) {
+                this._removeInfoBox(parseInt(infoBox.dataset.boxId));
+                return;
+            }
+            if (!CONFIG.middleClick.enabled || this.hoverId == null) return;
+            const row = this.model.row(this.hoverId);
+            this._createInfoBox(row, this.hoverId, e.clientX, e.clientY);
+        });
+
+        /* info box dragging */
+        window.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            const header = e.target.closest('.info-box-header');
+            if (!header) return;
+            const infoBox = header.closest('.info-box');
+            if (!infoBox) return;
+            const rect = infoBox.getBoundingClientRect();
+            this.infoBoxDragging = {
+                boxId: parseInt(infoBox.dataset.boxId),
+                offsetX: e.clientX - rect.left,
+                offsetY: e.clientY - rect.top
+            };
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!this.infoBoxDragging) return;
+            const box = this.infoBoxes.get(this.infoBoxDragging.boxId);
+            if (!box) return;
+            box.element.style.left = (e.clientX - this.infoBoxDragging.offsetX) + 'px';
+            box.element.style.top = (e.clientY - this.infoBoxDragging.offsetY) + 'px';
+            this._updateInfoBoxLine(this.infoBoxDragging.boxId);
+        });
+
+        window.addEventListener('mouseup', () => {
+            this.infoBoxDragging = null;
         });
 
         /* ── Touch event handlers ─────────────────────────────── */
@@ -509,6 +557,80 @@ class PointCloud {
         return div.innerHTML;
     }
 
+    /* ---------- info box methods (middle-click) ------------- */
+    _createInfoBox(row, pointId, clickX, clickY) {
+        const boxId = this.infoBoxIdCounter++;
+        const templateData = this._buildTemplateData(row, pointId);
+        const title = this._replaceTemplate(CONFIG.middleClick.title, templateData);
+        const content = this._replaceTemplate(CONFIG.middleClick.content, templateData);
+
+        const box = document.createElement('div');
+        box.className = 'info-box';
+        box.dataset.boxId = boxId;
+        box.style.left = clickX + 'px';
+        box.style.top = clickY + 'px';
+        box.innerHTML = `
+            <div class="info-box-header">
+                <span class="info-box-title">${this._escapeHtml(title)}</span>
+                <span class="info-box-close">×</span>
+            </div>
+            <div class="info-box-content">${content}</div>`;
+        box.querySelector('.info-box-close').addEventListener('click', (e) => { e.stopPropagation(); this._removeInfoBox(boxId); });
+        box.querySelector('.info-box-title').addEventListener('click', (e) => { e.stopPropagation(); this._handleRightClick(row, pointId); });
+        document.getElementById('info-boxes').appendChild(box);
+
+        const svg = document.getElementById('info-box-lines');
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.classList.add('info-box-line');
+        line.dataset.boxId = boxId;
+        svg.appendChild(line);
+
+        const anchor = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        anchor.classList.add('info-box-anchor');
+        anchor.setAttribute('r', '4');
+        anchor.dataset.boxId = boxId;
+        svg.appendChild(anchor);
+
+        this.infoBoxes.set(boxId, { element: box, lineElement: line, anchorElement: anchor, pointId, row });
+        this._updateInfoBoxLine(boxId);
+    }
+
+    _removeInfoBox(boxId) {
+        const box = this.infoBoxes.get(boxId);
+        if (!box) return;
+        box.element.remove();
+        box.lineElement.remove();
+        box.anchorElement.remove();
+        this.infoBoxes.delete(boxId);
+    }
+
+    _updateInfoBoxLine(boxId) {
+        const box = this.infoBoxes.get(boxId);
+        if (!box) return;
+        const a = this.state.axis;
+        const pointPos = new THREE.Vector3(
+            this.model.getCoord(box.pointId, a.x),
+            this.model.getCoord(box.pointId, a.y),
+            this.model.getCoord(box.pointId, a.z)
+        );
+        pointPos.project(this.camera);
+        const pointX = (pointPos.x * 0.5 + 0.5) * window.innerWidth;
+        const pointY = (-pointPos.y * 0.5 + 0.5) * window.innerHeight;
+        const rect = box.element.getBoundingClientRect();
+        box.lineElement.setAttribute('x1', pointX);
+        box.lineElement.setAttribute('y1', pointY);
+        box.lineElement.setAttribute('x2', rect.left);
+        box.lineElement.setAttribute('y2', rect.top + rect.height / 2);
+        box.anchorElement.setAttribute('cx', pointX);
+        box.anchorElement.setAttribute('cy', pointY);
+    }
+
+    _updateAllInfoBoxLines() {
+        for (const boxId of this.infoBoxes.keys()) {
+            this._updateInfoBoxLine(boxId);
+        }
+    }
+
     /* ========================================================= */
     _init() {
         this._setupRenderer();
@@ -781,6 +903,7 @@ class PointCloud {
             }
         }
 
+        this._updateAllInfoBoxLines();
         if (this.uiManager) this.uiManager.updateUI();
         this.renderer.render(this.scene, this.camera);
     }

@@ -130,7 +130,8 @@ class UIManager {
         sc.insertAdjacentHTML('beforeend', `
         <div class="shortcut-link" data-action="hover-toggle">k – hover UI <span class="status-indicator ${CONFIG.interaction.hoverActive ? 'status-enabled' : 'status-disabled'}" id="hover-status">(${CONFIG.interaction.hoverActive ? 'enabled' : 'disabled'})</span></div>
         <div class="shortcut-link" data-action="click-select-toggle">b – click-select <span class="status-indicator ${CONFIG.interaction.selectOnClick ? 'status-enabled' : 'status-disabled'}" id="click-select-status">(${CONFIG.interaction.selectOnClick ? 'enabled' : 'disabled'})</span></div>
-        <div class="shortcut-link" data-action="right-click-toggle">o – right-click <span class="status-indicator ${CONFIG.interaction.rightClickActive ? 'status-enabled' : 'status-disabled'}" id="right-click-status">(${CONFIG.interaction.rightClickActive ? 'enabled' : 'disabled'})</span></div>`);
+        <div class="shortcut-link" data-action="right-click-toggle">o – right-click <span class="status-indicator ${CONFIG.interaction.rightClickActive ? 'status-enabled' : 'status-disabled'}" id="right-click-status">(${CONFIG.interaction.rightClickActive ? 'enabled' : 'disabled'})</span></div>
+        <div class="shortcut-link" data-action="middle-click-toggle">p – middle-click <span class="status-indicator ${CONFIG.middleClick.enabled ? 'status-enabled' : 'status-disabled'}" id="middle-click-status">(${CONFIG.middleClick.enabled ? 'enabled' : 'disabled'})</span></div>`);
 
         sc.addEventListener('click', e => {
             const target = e.target.closest('[data-action]');
@@ -153,6 +154,10 @@ class UIManager {
                 CONFIG.interaction.rightClickActive = !CONFIG.interaction.rightClickActive;
                 this.pointCloud.rightClickActive = CONFIG.interaction.rightClickActive;
                 this._updateStatusIndicator('right-click-status', CONFIG.interaction.rightClickActive);
+                updateURL(); // Sync to URL
+            } else if (action === 'middle-click-toggle') {
+                CONFIG.middleClick.enabled = !CONFIG.middleClick.enabled;
+                this._updateStatusIndicator('middle-click-status', CONFIG.middleClick.enabled);
                 updateURL(); // Sync to URL
             } else {
                 const entry = Object.entries(this.uiConfig)
@@ -680,6 +685,13 @@ class UIManager {
                 CONFIG.interaction.rightClickActive = !CONFIG.interaction.rightClickActive;
                 this.pointCloud.rightClickActive = CONFIG.interaction.rightClickActive;
                 this._updateStatusIndicator('right-click-status', CONFIG.interaction.rightClickActive);
+                updateURL(); // Sync to URL
+            }
+
+            /* middle-click toggle */
+            if (e.code === 'KeyP') {
+                CONFIG.middleClick.enabled = !CONFIG.middleClick.enabled;
+                this._updateStatusIndicator('middle-click-status', CONFIG.middleClick.enabled);
                 updateURL(); // Sync to URL
             }
         });

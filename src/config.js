@@ -154,6 +154,15 @@ function getDefaultConfig() {
 			}
 		},
 
+		// Middle-click info box configuration
+		middleClick: {
+			enabled: true,
+			// Title template for the info box header
+			title: "{activation.cls}",
+			// HTML content template - fully customizable
+			content: '<div style="max-width: 300px; max-height: 300px; overflow: auto;"><pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;">{activation.cls}</pre></div>'
+		},
+
 		info: {
 			title: "Embedding Explorer",
 			help: "This tool lets you visualize high-dimensional data in 3D space."

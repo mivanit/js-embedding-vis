@@ -54,6 +54,7 @@
 				<p>K - Toggle hover tooltips when pointing at data points</p>
 				<p>B - Toggle click-to-select functionality</p>
 				<p>O - Toggle right-click actions for point details</p>
+				<p>P - Toggle middle-click info boxes</p>
 			</div>
 			<div class="help-section">
 				<h3>Data Interaction</h3>
@@ -61,6 +62,7 @@
 				<p>V - Cycle through available selection columns</p>
 				<p>Click - Select/deselect point (when click-select enabled)</p>
 				<p>Right-click - Open point data/URL (when right-click enabled)</p>
+				<p>Middle-click - Create info box for point (when enabled)</p>
 				<p>Hover - Show point details tooltip (when hover enabled)</p>
 			</div>
 			<div class="help-section">
@@ -252,6 +254,9 @@
 				NOTIF.success('Ready! Press H for help.');
 			});
 		</script>
+		<!-- Info box containers for middle-click functionality -->
+		<svg id="info-box-lines"></svg>
+		<div id="info-boxes"></div>
 </body>
 
 </html>

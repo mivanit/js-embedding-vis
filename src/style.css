@@ -648,3 +648,82 @@ button:hover {
 	font-size: 10px;
 	color: #00ccff;
 }
+
+/* Info box popup styles (middle-click) */
+.info-box {
+	position: fixed;
+	background: rgba(0, 0, 0, 0.9);
+	border: 2px solid #ffff00;
+	border-radius: 6px;
+	padding: 6px;
+	color: #00ff00;
+	font-family: 'Courier New', monospace;
+	font-size: 11px;
+	z-index: 1000;
+	cursor: move;
+	user-select: none;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.info-box-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+}
+
+.info-box-title {
+	color: #00ccff;
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.info-box-title:hover {
+	text-decoration: underline;
+}
+
+.info-box-close {
+	color: #ff4444;
+	cursor: pointer;
+	font-weight: bold;
+	font-size: 14px;
+	line-height: 1;
+	margin-left: 8px;
+}
+
+.info-box-close:hover {
+	color: #ff6666;
+}
+
+.info-box-content {
+	color: #00ff00;
+}
+
+.info-box-content img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+}
+
+/* SVG overlay for info box connection lines */
+#info-box-lines {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	z-index: 999;
+}
+
+.info-box-line {
+	stroke: #ffff00;
+	stroke-width: 2;
+	stroke-opacity: 0.7;
+	fill: none;
+}
+
+.info-box-anchor {
+	fill: #ffff00;
+	fill-opacity: 0.8;
+}
