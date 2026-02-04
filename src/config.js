@@ -167,6 +167,10 @@ function getDefaultConfig() {
 			title: "Embedding Explorer",
 			help: "This tool lets you visualize high-dimensional data in 3D space."
 		},
+
+		// Highlight groups - custom groups to highlight via URL or config
+		// Format: { groupName: { col: "columnName", values: ["val1", "val2"], color: "#ff0000" } }
+		highlightGroups: {},
 	}
 
 	if (INLINE_CONFIG) {
@@ -239,12 +243,45 @@ function deepMerge(target, source) {
  * Parse URL parameters and update CONFIG
  * Supports nested paths like: ?axes.x=2&selectedPoints.size=8&panels.menu=true
  * Also supports arrays like: ?selectedValues=value1,value2,value3
+ * Also supports highlight groups like: ?highlight.group1.col=colname&highlight.group1.values=val1,val2
  */
 function parseURLParams() {
 	const params = new URLSearchParams(window.location.search);
 
+	// First pass: collect highlight group parameters
+	const highlightParams = new Map(); // groupName -> {col, values, color}
+
 	for (const [key, value] of params) {
-		setNestedConfigValue(CONFIG, key, parseConfigValue(value));
+		if (key.startsWith('highlight.')) {
+			// Parse: highlight.groupname.property
+			const parts = key.split('.');
+			if (parts.length === 3) {
+				const [, groupName, property] = parts;
+				if (!highlightParams.has(groupName)) {
+					highlightParams.set(groupName, {});
+				}
+				const group = highlightParams.get(groupName);
+
+				if (property === 'col') {
+					group.col = value;
+				} else if (property === 'values') {
+					group.values = value.split(',').map(v => v.trim());
+				} else if (property === 'color') {
+					group.color = value;
+				}
+			}
+		} else {
+			// Existing behavior for non-highlight params
+			setNestedConfigValue(CONFIG, key, parseConfigValue(value));
+		}
+	}
+
+	// Merge collected highlight groups into CONFIG
+	for (const [groupName, groupConfig] of highlightParams) {
+		if (groupConfig.col && groupConfig.values) {
+			CONFIG.highlightGroups[groupName] = groupConfig;
+			console.log(`URL param override: highlight group "${groupName}" = col:${groupConfig.col}, values:[${groupConfig.values.join(',')}]${groupConfig.color ? ', color:' + groupConfig.color : ''}`);
+		}
 	}
 }
 
@@ -328,6 +365,11 @@ function generateURLParams() {
 			continue;
 		}
 
+		// Skip highlightGroups - handled separately below
+		if (path.startsWith('highlightGroups')) {
+			continue;
+		}
+
 		// Special handling for arrays
 		if (Array.isArray(value)) {
 			if (value.length > 0) {
@@ -335,6 +377,21 @@ function generateURLParams() {
 			}
 		} else {
 			params.set(path, value.toString());
+		}
+	}
+
+	// Handle highlightGroups specially with highlight.groupname.property format
+	if (CONFIG.highlightGroups) {
+		for (const [groupName, groupConfig] of Object.entries(CONFIG.highlightGroups)) {
+			if (groupConfig.col) {
+				params.set(`highlight.${groupName}.col`, groupConfig.col);
+			}
+			if (groupConfig.values && groupConfig.values.length > 0) {
+				params.set(`highlight.${groupName}.values`, groupConfig.values.join(','));
+			}
+			if (groupConfig.color) {
+				params.set(`highlight.${groupName}.color`, groupConfig.color);
+			}
 		}
 	}
 

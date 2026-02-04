@@ -8,11 +8,59 @@ class SelectionManager {
 		// Cache for expensive computations
 		this._colorCache = new Map();
 		this._numericRangeCache = new Map();
+
+		// Cache for highlight group colors
+		this._highlightGroupColors = new Map();
+		this._initHighlightGroupColors();
+	}
+
+	/** Initialize colors for highlight groups */
+	_initHighlightGroupColors() {
+		this._highlightGroupColors.clear();
+		if (CONFIG.highlightGroups) {
+			for (const [groupName, groupConfig] of Object.entries(CONFIG.highlightGroups)) {
+				if (groupConfig.color) {
+					// Use specified color
+					this._highlightGroupColors.set(groupName, new THREE.Color(groupConfig.color));
+				} else {
+					// Generate a random color
+					const randomHex = generateDistinctColors(1)[0];
+					this._highlightGroupColors.set(groupName, new THREE.Color(randomHex));
+				}
+			}
+		}
+	}
+
+	/** Check if a row matches any highlight group, returns first match */
+	_getHighlightGroup(row) {
+		if (!CONFIG.highlightGroups) return null;
+
+		// Iterate in object key order (first defined = first priority)
+		for (const [groupName, groupConfig] of Object.entries(CONFIG.highlightGroups)) {
+			const columnValue = row[groupConfig.col];
+			if (groupConfig.values && groupConfig.values.includes(String(columnValue))) {
+				return groupName;
+			}
+		}
+		return null;
 	}
 
 	/** colour & selection attributes for a given row id */
 	attrs(rowId) {
 		const row = this.model.row(rowId);
+
+		// Check highlight groups FIRST (supersedes selection)
+		const highlightGroup = this._getHighlightGroup(row);
+		if (highlightGroup) {
+			const highlightColor = this._highlightGroupColors.get(highlightGroup);
+			return {
+				r: highlightColor.r,
+				g: highlightColor.g,
+				b: highlightColor.b,
+				size: this.state.selSize,
+				opacity: this.state.selOp
+			};
+		}
 
 		// Check if this point should be treated as selected
 		const selectValue = row[this.state.selectBy];
@@ -116,6 +164,17 @@ class SelectionManager {
 		this.palette = generateDistinctColors(CONFIG.colors.paletteSize);
 		// Clear color cache when palette changes
 		this._colorCache.clear();
+
+		// Also randomize highlight group colors (unless explicitly specified)
+		if (CONFIG.highlightGroups) {
+			for (const [groupName, groupConfig] of Object.entries(CONFIG.highlightGroups)) {
+				if (!groupConfig.color) {
+					// Only randomize auto-generated colors, not user-specified ones
+					const randomHex = generateDistinctColors(1)[0];
+					this._highlightGroupColors.set(groupName, new THREE.Color(randomHex));
+				}
+			}
+		}
 	}
 
 	// Clear caches when column changes
