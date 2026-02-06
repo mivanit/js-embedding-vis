@@ -2081,7 +2081,9 @@
 			const isValidValue = selectValue !== null && selectValue !== 'null' && selectValue !== 'unknown';
 	
 			// If no explicit selection, treat all valid points as selected
-			const treatAsSelected = isExplicitlySelected || (this.state.selection.size === 0 && isValidValue);
+			// BUT if highlightGroups are defined, non-highlighted points should be unselected
+			const hasHighlightGroups = CONFIG.highlightGroups && Object.keys(CONFIG.highlightGroups).length > 0;
+			const treatAsSelected = isExplicitlySelected || (this.state.selection.size === 0 && isValidValue && !hasHighlightGroups);
 	
 			// Get base color from colorBy column (with caching)
 			const colorValue = row[this.state.colorBy];
