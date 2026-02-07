@@ -1917,6 +1917,7 @@
 	
 			try {
 				let df;
+				let pbar;
 	
 				// Check if dataFile is null - use embedded data
 				if (filename === null || filename === undefined) {
@@ -1928,7 +1929,8 @@
 					}
 	
 					// Use embedded data directly
-					const pbar = NOTIF.pbar('Processing embedded data...');
+					spinner.complete();
+					pbar = NOTIF.pbar('Processing embedded data...');
 					pbar.progress(0.2);
 	
 					// Extract all unique column names from all rows
@@ -1955,7 +1957,7 @@
 					}
 	
 					downloadSpinner.complete();
-					const pbar = NOTIF.pbar('Processing data...');
+					pbar = NOTIF.pbar('Processing data...');
 	
 					pbar.progress(0.1);
 					const text = await resp.text();
@@ -1988,19 +1990,14 @@
 	
 				const result = new DataModel(df, numeric);
 	
-				if (filename === null || filename === undefined) {
-					spinner.complete();
-					NOTIF.success(`Loaded ${df.data.length} embedded data points with ${numeric.length} dimensions`);
-				} else {
-					const pbar = NOTIF.pbar('Processing data...');
-					pbar.progress(1.0);
-					pbar.complete();
-					NOTIF.success(`Loaded ${df.data.length} data points with ${numeric.length} dimensions`);
-				}
+				pbar.progress(1.0);
+				pbar.complete();
+				NOTIF.success(`Loaded ${df.data.length} data points with ${numeric.length} dimensions`);
 	
 				return result;
 			} catch (error) {
 				spinner.complete();
+				if (pbar) pbar.complete();
 				NOTIF.error('Failed to load data', error, 99999999999);
 				console.error("DataModel load error:", error);
 				throw error;
