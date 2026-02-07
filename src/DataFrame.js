@@ -73,8 +73,16 @@ class DataFrame {
 	}
 
 	/**
-	 * Parses a CSV string into a DataFrame
-	 * 
+	 * Parses a CSV string into a DataFrame.
+	 *
+	 * Note: This is a simple CSV parser that splits on commas and newlines.
+	 * It does NOT support:
+	 * - Commas within fields (even if quoted)
+	 * - Newlines within fields
+	 * - Escaped quotes
+	 *
+	 * For complex data, use JSONL format instead (see from_jsonl).
+	 *
 	 * @param {string} text - CSV text content
 	 * @returns {DataFrame} - New DataFrame instance
 	 */

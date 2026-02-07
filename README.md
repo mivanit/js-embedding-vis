@@ -150,3 +150,15 @@ Data is loaded from JSONL (JSON Lines) format - one JSON object per line:
 - Columns prefixed with `pc.` (configurable via `numericalPrefix`) are treated as numeric dimensions for the 3D axes
 - Other columns can be used for coloring, selection, and display
 - Numeric columns use a viridis gradient colormap; categorical columns use distinct colors
+
+### CSV Format (Simple)
+
+CSV files are also supported with a simple parser:
+
+```csv
+name,pc.1,pc.2,pc.3,category
+point1,0.5,-0.3,0.1,A
+point2,-0.2,0.8,-0.4,B
+```
+
+**Limitations:** The CSV parser splits on commas and newlines directly. Fields cannot contain commas or newlines. For data with special characters, use JSONL format instead.
