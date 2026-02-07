@@ -122,8 +122,8 @@ class SelectionManager {
 		// Get cached min/max for the column
 		if (!this._numericRangeCache.has(column)) {
 			const values = this.model.df.col(column).filter(v => typeof v === 'number' && !isNaN(v));
-			const min = Math.min(...values);
-			const max = Math.max(...values);
+			const min = values.reduce((a, b) => Math.min(a, b), Infinity);
+			const max = values.reduce((a, b) => Math.max(a, b), -Infinity);
 			this._numericRangeCache.set(column, { min, max });
 		}
 

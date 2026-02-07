@@ -110,14 +110,14 @@ class PointCloud {
             // Don't process clicks during touch interactions
             if (this.touchState.panDisablesInteraction) return;
 
-            if (!this.selectOnClick || this.hoverId == null) return;
+            if (!this.selectOnClick || this.hoverId === null) return;
             const v = this.model.row(this.hoverId)[this.state.selectBy];
             this.state.toggleValue(v);
         });
 
         /* right-click handler */
         window.addEventListener('contextmenu', (e) => {
-            if (!this.rightClickActive || this.hoverId == null) return;
+            if (!this.rightClickActive || this.hoverId === null) return;
             e.preventDefault(); // Prevent default context menu
 
             const row = this.model.row(this.hoverId);
@@ -133,7 +133,7 @@ class PointCloud {
                 this._removeInfoBox(parseInt(infoBox.dataset.boxId));
                 return;
             }
-            if (!CONFIG.middleClick.enabled || this.hoverId == null) return;
+            if (!CONFIG.middleClick.enabled || this.hoverId === null) return;
             const row = this.model.row(this.hoverId);
             this._createInfoBox(row, this.hoverId, e.clientX, e.clientY);
         });
@@ -696,7 +696,7 @@ class PointCloud {
     }
 
     _updateCrosshairs(id) {
-        if (!this.hoverActive || id == null) {
+        if (!this.hoverActive || id === null) {
             this.crossH.visible = this.crossV.visible = false;
             return;
         }

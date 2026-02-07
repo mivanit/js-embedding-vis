@@ -166,8 +166,30 @@ class DataFrame {
 	 * @returns {DataFrame} - New DataFrame instance
 	 */
 	static from_jsonl(text) {
-		// Parse each line as JSON
-		const data = text.trim().split('\n').map(line => JSON.parse(line));
+		// Parse each line as JSON with error handling
+		const lines = text.trim().split('\n');
+		const data = [];
+		const errors = [];
+
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i].trim();
+			if (!line) continue; // Skip empty lines
+
+			try {
+				data.push(JSON.parse(line));
+			} catch (e) {
+				errors.push({ line: i + 1, message: e.message });
+				console.warn(`Skipping malformed JSON at line ${i + 1}: ${e.message}`);
+			}
+		}
+
+		// Show persistent error toast if there were parsing errors
+		if (errors.length > 0) {
+			const errorMsg = `${errors.length}/${lines.length} lines had malformed JSON (check console for line numbers)`;
+			if (typeof NOTIF !== 'undefined') {
+				NOTIF.error(errorMsg, null, 60000); // Persistent for 60 seconds
+			}
+		}
 
 		// Extract all unique column names from all rows
 		const allColumns = new Set();
