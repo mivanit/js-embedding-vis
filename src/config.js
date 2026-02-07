@@ -88,7 +88,7 @@ function getDefaultConfig() {
 
 		// Rendering settings
 		rendering: {
-			clearColor: 0x000011,
+			clearColor: "#000011",
 			cameraFov: 75,
 			cameraNear: 0.1,
 			cameraFar: 2000,

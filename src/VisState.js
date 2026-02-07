@@ -17,6 +17,7 @@ class VisState extends EventTarget {
 		this.nonSelOp = CONFIG.nonSelectedPoints.opacity;
 		this.selOp = CONFIG.selectedPoints.opacity;
 		this.nonSelColor = CONFIG.nonSelectedPoints.color;
+		this.bgColor = CONFIG.rendering.clearColor;
 
 		/* store *values* (categories) now, not row indices */
 		this.selection = new Set();
@@ -87,6 +88,9 @@ class VisState extends EventTarget {
 				break;
 			case 'nonSelColor':
 				CONFIG.nonSelectedPoints.color = v;
+				break;
+			case 'bgColor':
+				CONFIG.rendering.clearColor = v;
 				break;
 		}
 

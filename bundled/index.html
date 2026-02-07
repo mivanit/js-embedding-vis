@@ -948,7 +948,7 @@
 	
 			// Rendering settings
 			rendering: {
-				clearColor: 0x000011,
+				clearColor: "#000011",
 				cameraFov: 75,
 				cameraNear: 0.1,
 				cameraFar: 2000,
@@ -2221,6 +2221,7 @@
 			this.nonSelOp = CONFIG.nonSelectedPoints.opacity;
 			this.selOp = CONFIG.selectedPoints.opacity;
 			this.nonSelColor = CONFIG.nonSelectedPoints.color;
+			this.bgColor = CONFIG.rendering.clearColor;
 	
 			/* store *values* (categories) now, not row indices */
 			this.selection = new Set();
@@ -2291,6 +2292,9 @@
 					break;
 				case 'nonSelColor':
 					CONFIG.nonSelectedPoints.color = v;
+					break;
+				case 'bgColor':
+					CONFIG.rendering.clearColor = v;
 					break;
 			}
 	
@@ -2522,6 +2526,7 @@
 	
 	        // Color controls
 	        const nonSelColorPicker = document.getElementById('nonSelColor');
+	        const bgColorPicker = document.getElementById('bgColor');
 	        const randomizeColorsBtn = document.getElementById('randomizeColors');
 	
 	        // Set up slider attributes from CONFIG
@@ -2567,6 +2572,10 @@
 	
 	        if (nonSelColorPicker) {
 	            nonSelColorPicker.value = CONFIG.nonSelectedPoints.color;
+	        }
+	
+	        if (bgColorPicker) {
+	            bgColorPicker.value = CONFIG.rendering.clearColor;
 	        }
 	
 	        // Selected point size
@@ -2620,6 +2629,13 @@
 	        if (nonSelColorPicker) {
 	            nonSelColorPicker.addEventListener('input', () => {
 	                this.pointCloud.state.setVisParam('nonSelColor', nonSelColorPicker.value);
+	            });
+	        }
+	
+	        // Background color
+	        if (bgColorPicker) {
+	            bgColorPicker.addEventListener('input', () => {
+	                this.pointCloud.state.setVisParam('bgColor', bgColorPicker.value);
 	            });
 	        }
 	
@@ -3270,7 +3286,10 @@
 	        this.state = new VisState(model);
 	        this.selMgr = new SelectionManager(model, this.state);
 	        this.state.addEventListener('selection', () => this._updateColors());
-	        this.state.addEventListener('vis', () => this._updateColors());
+	        this.state.addEventListener('vis', () => {
+	            this._updateColors();
+	            this.renderer.setClearColor(this.state.bgColor);
+	        });
 	
 	        /* ── viewer settings - using CONFIG ──────────────────── */
 	        this.settings = {
@@ -3857,7 +3876,7 @@
 	
 	    _setupRenderer() {
 	        this.renderer.setSize(window.innerWidth, window.innerHeight);
-	        this.renderer.setClearColor(CONFIG.rendering.clearColor);
+	        this.renderer.setClearColor(this.state.bgColor);
 	        document.getElementById('container').appendChild(this.renderer.domElement);
 	
 	        // Set camera position and rotation from CONFIG
@@ -4451,6 +4470,10 @@
 						<div class="control-row">
 							<label>Color:</label>
 							<input id="nonSelColor" type="color" value="#666666">
+						</div>
+						<div class="control-row">
+							<label>Background:</label>
+							<input id="bgColor" type="color" value="#000011">
 						</div>
 					</div>
 				</div>

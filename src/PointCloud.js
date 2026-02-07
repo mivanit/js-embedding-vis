@@ -57,7 +57,10 @@ class PointCloud {
         this.state = new VisState(model);
         this.selMgr = new SelectionManager(model, this.state);
         this.state.addEventListener('selection', () => this._updateColors());
-        this.state.addEventListener('vis', () => this._updateColors());
+        this.state.addEventListener('vis', () => {
+            this._updateColors();
+            this.renderer.setClearColor(this.state.bgColor);
+        });
 
         /* ── viewer settings - using CONFIG ──────────────────── */
         this.settings = {
@@ -644,7 +647,7 @@ class PointCloud {
 
     _setupRenderer() {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setClearColor(CONFIG.rendering.clearColor);
+        this.renderer.setClearColor(this.state.bgColor);
         document.getElementById('container').appendChild(this.renderer.domElement);
 
         // Set camera position and rotation from CONFIG

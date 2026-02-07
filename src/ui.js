@@ -190,6 +190,7 @@ class UIManager {
 
         // Color controls
         const nonSelColorPicker = document.getElementById('nonSelColor');
+        const bgColorPicker = document.getElementById('bgColor');
         const randomizeColorsBtn = document.getElementById('randomizeColors');
 
         // Set up slider attributes from CONFIG
@@ -235,6 +236,10 @@ class UIManager {
 
         if (nonSelColorPicker) {
             nonSelColorPicker.value = CONFIG.nonSelectedPoints.color;
+        }
+
+        if (bgColorPicker) {
+            bgColorPicker.value = CONFIG.rendering.clearColor;
         }
 
         // Selected point size
@@ -288,6 +293,13 @@ class UIManager {
         if (nonSelColorPicker) {
             nonSelColorPicker.addEventListener('input', () => {
                 this.pointCloud.state.setVisParam('nonSelColor', nonSelColorPicker.value);
+            });
+        }
+
+        // Background color
+        if (bgColorPicker) {
+            bgColorPicker.addEventListener('input', () => {
+                this.pointCloud.state.setVisParam('bgColor', bgColorPicker.value);
             });
         }
 
