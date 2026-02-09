@@ -35,5 +35,10 @@
 		"position": {
 			"z": 5
 		}
+	},
+	"middleClick": {
+		"enabled": true,
+		"title": "{target_name}",
+		"content": "<div style='font-family: monospace;'><b>Species:</b> {target_name}<br><b>Sepal:</b> {data.sepal length (cm)} × {data.sepal width (cm)} cm<br><b>Petal:</b> {data.petal length (cm)} × {data.petal width (cm)} cm</div>"
 	}
 }

@@ -31,5 +31,10 @@
 		"position": {
 			"z": 50
 		}
+	},
+	"middleClick": {
+		"enabled": true,
+		"title": "Digit {target_name}",
+		"content": "<img src='images/{_index}.png' style='min-width: 50px; max-width: 300px; image-rendering: pixelated;'><div>Index: {_index}</div>"
 	}
 }
