@@ -445,9 +445,11 @@ class UIManager {
         // Single Apply button for axes with notifications
         if (applyAxes) {
             applyAxes.addEventListener('click', async () => {
-                const newX = parseInt(xAxisSelect.value);
-                const newY = parseInt(yAxisSelect.value);
-                const newZ = parseInt(zAxisSelect.value);
+                const maxIdx = this.pointCloud.model.numericCols.length - 1;
+                const clamp = (v) => Math.max(0, Math.min(v, maxIdx));
+                const newX = clamp(parseInt(xAxisSelect.value) || 0);
+                const newY = clamp(parseInt(yAxisSelect.value) || 0);
+                const newZ = clamp(parseInt(zAxisSelect.value) || 0);
 
                 // Check if changes are needed
                 const xChanged = newX !== CONFIG.axes.x;

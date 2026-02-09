@@ -8,6 +8,7 @@ class SelectionManager {
 		// Cache for expensive computations
 		this._colorCache = new Map();
 		this._numericRangeCache = new Map();
+		this._isNumericColumnCache = new Map();
 
 		// Cache for highlight group colors
 		this._highlightGroupColors = new Map();
@@ -103,7 +104,7 @@ class SelectionManager {
 
 		if (!this._colorCache.has(cacheKey)) {
 			let color;
-			if (this.state.isNumericColumn(this.state.colorBy)) {
+			if (this._isNumericColumnCached(this.state.colorBy)) {
 				color = this._getViridisColor(value, this.state.colorBy);
 			} else {
 				color = this._getCategoricalColor(value);
@@ -114,6 +115,13 @@ class SelectionManager {
 		return this._colorCache.get(cacheKey);
 	}
 
+	_isNumericColumnCached(column) {
+		if (!this._isNumericColumnCache.has(column)) {
+			this._isNumericColumnCache.set(column, this.state.isNumericColumn(column));
+		}
+		return this._isNumericColumnCache.get(column);
+	}
+
 	_getViridisColor(value, column) {
 		if (value === null || value === undefined || isNaN(value)) {
 			return new THREE.Color(CONFIG.colors.nullValueColor);
@@ -122,9 +130,14 @@ class SelectionManager {
 		// Get cached min/max for the column
 		if (!this._numericRangeCache.has(column)) {
 			const values = this.model.df.col(column).filter(v => typeof v === 'number' && !isNaN(v));
-			const min = values.reduce((a, b) => Math.min(a, b), Infinity);
-			const max = values.reduce((a, b) => Math.max(a, b), -Infinity);
-			this._numericRangeCache.set(column, { min, max });
+			if (values.length === 0) {
+				NOTIF.show(`Column "${column}" has no numeric values`, 4000);
+				this._numericRangeCache.set(column, { min: 0, max: 0 });
+			} else {
+				const min = values.reduce((a, b) => Math.min(a, b), Infinity);
+				const max = values.reduce((a, b) => Math.max(a, b), -Infinity);
+				this._numericRangeCache.set(column, { min, max });
+			}
 		}
 
 		const { min, max } = this._numericRangeCache.get(column);
@@ -183,5 +196,6 @@ class SelectionManager {
 	clearCaches() {
 		this._colorCache.clear();
 		this._numericRangeCache.clear();
+		this._isNumericColumnCache.clear();
 	}
 }

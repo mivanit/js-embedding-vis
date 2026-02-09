@@ -60,11 +60,20 @@ class DataModel {
 				spinner.complete();
 				const downloadSpinner = NOTIF.spinner('Downloading data...');
 
-				const resp = await fetch(filename);
+				let resp;
+				try {
+					resp = await fetch(filename);
+				} catch (networkError) {
+					downloadSpinner.complete();
+					const errorMsg = `Network error loading data: ${networkError.message}`;
+					NOTIF.error(errorMsg, networkError, 30000);
+					throw networkError;
+				}
+
 				if (!resp.ok) {
 					const errorMsg = `Failed to load data: ${resp.status} ${resp.statusText}`;
 					downloadSpinner.complete();
-					NOTIF.error(errorMsg, new Error(errorMsg));
+					NOTIF.error(errorMsg, new Error(errorMsg), 30000);
 					throw new Error(errorMsg);
 				}
 
