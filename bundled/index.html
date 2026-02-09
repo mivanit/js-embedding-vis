@@ -1745,8 +1745,16 @@
 		}
 	
 		/**
-		 * Parses a CSV string into a DataFrame
-		 * 
+		 * Parses a CSV string into a DataFrame.
+		 *
+		 * Note: This is a simple CSV parser that splits on commas and newlines.
+		 * It does NOT support:
+		 * - Commas within fields (even if quoted)
+		 * - Newlines within fields
+		 * - Escaped quotes
+		 *
+		 * For complex data, use JSONL format instead (see from_jsonl).
+		 *
 		 * @param {string} text - CSV text content
 		 * @returns {DataFrame} - New DataFrame instance
 		 */
@@ -1970,11 +1978,20 @@
 					spinner.complete();
 					const downloadSpinner = NOTIF.spinner('Downloading data...');
 	
-					const resp = await fetch(filename);
+					let resp;
+					try {
+						resp = await fetch(filename);
+					} catch (networkError) {
+						downloadSpinner.complete();
+						const errorMsg = `Network error loading data: ${networkError.message}`;
+						NOTIF.error(errorMsg, networkError, 30000);
+						throw networkError;
+					}
+	
 					if (!resp.ok) {
 						const errorMsg = `Failed to load data: ${resp.status} ${resp.statusText}`;
 						downloadSpinner.complete();
-						NOTIF.error(errorMsg, new Error(errorMsg));
+						NOTIF.error(errorMsg, new Error(errorMsg), 30000);
 						throw new Error(errorMsg);
 					}
 	
@@ -2040,6 +2057,7 @@
 			// Cache for expensive computations
 			this._colorCache = new Map();
 			this._numericRangeCache = new Map();
+			this._isNumericColumnCache = new Map();
 	
 			// Cache for highlight group colors
 			this._highlightGroupColors = new Map();
@@ -2135,7 +2153,7 @@
 	
 			if (!this._colorCache.has(cacheKey)) {
 				let color;
-				if (this.state.isNumericColumn(this.state.colorBy)) {
+				if (this._isNumericColumnCached(this.state.colorBy)) {
 					color = this._getViridisColor(value, this.state.colorBy);
 				} else {
 					color = this._getCategoricalColor(value);
@@ -2146,6 +2164,13 @@
 			return this._colorCache.get(cacheKey);
 		}
 	
+		_isNumericColumnCached(column) {
+			if (!this._isNumericColumnCache.has(column)) {
+				this._isNumericColumnCache.set(column, this.state.isNumericColumn(column));
+			}
+			return this._isNumericColumnCache.get(column);
+		}
+	
 		_getViridisColor(value, column) {
 			if (value === null || value === undefined || isNaN(value)) {
 				return new THREE.Color(CONFIG.colors.nullValueColor);
@@ -2154,9 +2179,14 @@
 			// Get cached min/max for the column
 			if (!this._numericRangeCache.has(column)) {
 				const values = this.model.df.col(column).filter(v => typeof v === 'number' && !isNaN(v));
-				const min = values.reduce((a, b) => Math.min(a, b), Infinity);
-				const max = values.reduce((a, b) => Math.max(a, b), -Infinity);
-				this._numericRangeCache.set(column, { min, max });
+				if (values.length === 0) {
+					NOTIF.show(`Column "${column}" has no numeric values`, 4000);
+					this._numericRangeCache.set(column, { min: 0, max: 0 });
+				} else {
+					const min = values.reduce((a, b) => Math.min(a, b), Infinity);
+					const max = values.reduce((a, b) => Math.max(a, b), -Infinity);
+					this._numericRangeCache.set(column, { min, max });
+				}
 			}
 	
 			const { min, max } = this._numericRangeCache.get(column);
@@ -2215,6 +2245,7 @@
 		clearCaches() {
 			this._colorCache.clear();
 			this._numericRangeCache.clear();
+			this._isNumericColumnCache.clear();
 		}
 	}
 	</script>
@@ -2800,9 +2831,11 @@
 	        // Single Apply button for axes with notifications
 	        if (applyAxes) {
 	            applyAxes.addEventListener('click', async () => {
-	                const newX = parseInt(xAxisSelect.value);
-	                const newY = parseInt(yAxisSelect.value);
-	                const newZ = parseInt(zAxisSelect.value);
+	                const maxIdx = this.pointCloud.model.numericCols.length - 1;
+	                const clamp = (v) => Math.max(0, Math.min(v, maxIdx));
+	                const newX = clamp(parseInt(xAxisSelect.value) || 0);
+	                const newY = clamp(parseInt(yAxisSelect.value) || 0);
+	                const newZ = clamp(parseInt(zAxisSelect.value) || 0);
 	
 	                // Check if changes are needed
 	                const xChanged = newX !== CONFIG.axes.x;

@@ -2638,7 +2638,7 @@
 	
 			// Rendering settings
 			rendering: {
-				clearColor: 0x000011,
+				clearColor: "#000011",
 				cameraFov: 75,
 				cameraNear: 0.1,
 				cameraFar: 2000,
@@ -3435,8 +3435,16 @@
 		}
 	
 		/**
-		 * Parses a CSV string into a DataFrame
-		 * 
+		 * Parses a CSV string into a DataFrame.
+		 *
+		 * Note: This is a simple CSV parser that splits on commas and newlines.
+		 * It does NOT support:
+		 * - Commas within fields (even if quoted)
+		 * - Newlines within fields
+		 * - Escaped quotes
+		 *
+		 * For complex data, use JSONL format instead (see from_jsonl).
+		 *
 		 * @param {string} text - CSV text content
 		 * @returns {DataFrame} - New DataFrame instance
 		 */
@@ -3528,8 +3536,30 @@
 		 * @returns {DataFrame} - New DataFrame instance
 		 */
 		static from_jsonl(text) {
-			// Parse each line as JSON
-			const data = text.trim().split('\n').map(line => JSON.parse(line));
+			// Parse each line as JSON with error handling
+			const lines = text.trim().split('\n');
+			const data = [];
+			const errors = [];
+	
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i].trim();
+				if (!line) continue; // Skip empty lines
+	
+				try {
+					data.push(JSON.parse(line));
+				} catch (e) {
+					errors.push({ line: i + 1, message: e.message });
+					console.warn(`Skipping malformed JSON at line ${i + 1}: ${e.message}`);
+				}
+			}
+	
+			// Show persistent error toast if there were parsing errors
+			if (errors.length > 0) {
+				const errorMsg = `${errors.length}/${lines.length} lines had malformed JSON (check console for line numbers)`;
+				if (typeof NOTIF !== 'undefined') {
+					NOTIF.error(errorMsg, null, 60000); // Persistent for 60 seconds
+				}
+			}
 	
 			// Extract all unique column names from all rows
 			const allColumns = new Set();
@@ -3607,6 +3637,7 @@
 	
 			try {
 				let df;
+				let pbar;
 	
 				// Check if dataFile is null - use embedded data
 				if (filename === null || filename === undefined) {
@@ -3618,7 +3649,8 @@
 					}
 	
 					// Use embedded data directly
-					const pbar = NOTIF.pbar('Processing embedded data...');
+					spinner.complete();
+					pbar = NOTIF.pbar('Processing embedded data...');
 					pbar.progress(0.2);
 	
 					// Extract all unique column names from all rows
@@ -3636,16 +3668,25 @@
 					spinner.complete();
 					const downloadSpinner = NOTIF.spinner('Downloading data...');
 	
-					const resp = await fetch(filename);
+					let resp;
+					try {
+						resp = await fetch(filename);
+					} catch (networkError) {
+						downloadSpinner.complete();
+						const errorMsg = `Network error loading data: ${networkError.message}`;
+						NOTIF.error(errorMsg, networkError, 30000);
+						throw networkError;
+					}
+	
 					if (!resp.ok) {
 						const errorMsg = `Failed to load data: ${resp.status} ${resp.statusText}`;
 						downloadSpinner.complete();
-						NOTIF.error(errorMsg, new Error(errorMsg));
+						NOTIF.error(errorMsg, new Error(errorMsg), 30000);
 						throw new Error(errorMsg);
 					}
 	
 					downloadSpinner.complete();
-					const pbar = NOTIF.pbar('Processing data...');
+					pbar = NOTIF.pbar('Processing data...');
 	
 					pbar.progress(0.1);
 					const text = await resp.text();
@@ -3678,19 +3719,14 @@
 	
 				const result = new DataModel(df, numeric);
 	
-				if (filename === null || filename === undefined) {
-					spinner.complete();
-					NOTIF.success(`Loaded ${df.data.length} embedded data points with ${numeric.length} dimensions`);
-				} else {
-					const pbar = NOTIF.pbar('Processing data...');
-					pbar.progress(1.0);
-					pbar.complete();
-					NOTIF.success(`Loaded ${df.data.length} data points with ${numeric.length} dimensions`);
-				}
+				pbar.progress(1.0);
+				pbar.complete();
+				NOTIF.success(`Loaded ${df.data.length} data points with ${numeric.length} dimensions`);
 	
 				return result;
 			} catch (error) {
 				spinner.complete();
+				if (pbar) pbar.complete();
 				NOTIF.error('Failed to load data', error, 99999999999);
 				console.error("DataModel load error:", error);
 				throw error;
@@ -3711,6 +3747,7 @@
 			// Cache for expensive computations
 			this._colorCache = new Map();
 			this._numericRangeCache = new Map();
+			this._isNumericColumnCache = new Map();
 	
 			// Cache for highlight group colors
 			this._highlightGroupColors = new Map();
@@ -3771,7 +3808,9 @@
 			const isValidValue = selectValue !== null && selectValue !== 'null' && selectValue !== 'unknown';
 	
 			// If no explicit selection, treat all valid points as selected
-			const treatAsSelected = isExplicitlySelected || (this.state.selection.size === 0 && isValidValue);
+			// BUT if highlightGroups are defined, non-highlighted points should be unselected
+			const hasHighlightGroups = CONFIG.highlightGroups && Object.keys(CONFIG.highlightGroups).length > 0;
+			const treatAsSelected = isExplicitlySelected || (this.state.selection.size === 0 && isValidValue && !hasHighlightGroups);
 	
 			// Get base color from colorBy column (with caching)
 			const colorValue = row[this.state.colorBy];
@@ -3804,7 +3843,7 @@
 	
 			if (!this._colorCache.has(cacheKey)) {
 				let color;
-				if (this.state.isNumericColumn(this.state.colorBy)) {
+				if (this._isNumericColumnCached(this.state.colorBy)) {
 					color = this._getViridisColor(value, this.state.colorBy);
 				} else {
 					color = this._getCategoricalColor(value);
@@ -3815,6 +3854,13 @@
 			return this._colorCache.get(cacheKey);
 		}
 	
+		_isNumericColumnCached(column) {
+			if (!this._isNumericColumnCache.has(column)) {
+				this._isNumericColumnCache.set(column, this.state.isNumericColumn(column));
+			}
+			return this._isNumericColumnCache.get(column);
+		}
+	
 		_getViridisColor(value, column) {
 			if (value === null || value === undefined || isNaN(value)) {
 				return new THREE.Color(CONFIG.colors.nullValueColor);
@@ -3823,9 +3869,14 @@
 			// Get cached min/max for the column
 			if (!this._numericRangeCache.has(column)) {
 				const values = this.model.df.col(column).filter(v => typeof v === 'number' && !isNaN(v));
-				const min = Math.min(...values);
-				const max = Math.max(...values);
-				this._numericRangeCache.set(column, { min, max });
+				if (values.length === 0) {
+					NOTIF.show(`Column "${column}" has no numeric values`, 4000);
+					this._numericRangeCache.set(column, { min: 0, max: 0 });
+				} else {
+					const min = values.reduce((a, b) => Math.min(a, b), Infinity);
+					const max = values.reduce((a, b) => Math.max(a, b), -Infinity);
+					this._numericRangeCache.set(column, { min, max });
+				}
 			}
 	
 			const { min, max } = this._numericRangeCache.get(column);
@@ -3884,6 +3935,7 @@
 		clearCaches() {
 			this._colorCache.clear();
 			this._numericRangeCache.clear();
+			this._isNumericColumnCache.clear();
 		}
 	}
 	</script>
@@ -3909,6 +3961,7 @@
 			this.nonSelOp = CONFIG.nonSelectedPoints.opacity;
 			this.selOp = CONFIG.selectedPoints.opacity;
 			this.nonSelColor = CONFIG.nonSelectedPoints.color;
+			this.bgColor = CONFIG.rendering.clearColor;
 	
 			/* store *values* (categories) now, not row indices */
 			this.selection = new Set();
@@ -3979,6 +4032,9 @@
 					break;
 				case 'nonSelColor':
 					CONFIG.nonSelectedPoints.color = v;
+					break;
+				case 'bgColor':
+					CONFIG.rendering.clearColor = v;
 					break;
 			}
 	
@@ -4210,6 +4266,7 @@
 	
 	        // Color controls
 	        const nonSelColorPicker = document.getElementById('nonSelColor');
+	        const bgColorPicker = document.getElementById('bgColor');
 	        const randomizeColorsBtn = document.getElementById('randomizeColors');
 	
 	        // Set up slider attributes from CONFIG
@@ -4255,6 +4312,10 @@
 	
 	        if (nonSelColorPicker) {
 	            nonSelColorPicker.value = CONFIG.nonSelectedPoints.color;
+	        }
+	
+	        if (bgColorPicker) {
+	            bgColorPicker.value = CONFIG.rendering.clearColor;
 	        }
 	
 	        // Selected point size
@@ -4308,6 +4369,13 @@
 	        if (nonSelColorPicker) {
 	            nonSelColorPicker.addEventListener('input', () => {
 	                this.pointCloud.state.setVisParam('nonSelColor', nonSelColorPicker.value);
+	            });
+	        }
+	
+	        // Background color
+	        if (bgColorPicker) {
+	            bgColorPicker.addEventListener('input', () => {
+	                this.pointCloud.state.setVisParam('bgColor', bgColorPicker.value);
 	            });
 	        }
 	
@@ -4453,9 +4521,11 @@
 	        // Single Apply button for axes with notifications
 	        if (applyAxes) {
 	            applyAxes.addEventListener('click', async () => {
-	                const newX = parseInt(xAxisSelect.value);
-	                const newY = parseInt(yAxisSelect.value);
-	                const newZ = parseInt(zAxisSelect.value);
+	                const maxIdx = this.pointCloud.model.numericCols.length - 1;
+	                const clamp = (v) => Math.max(0, Math.min(v, maxIdx));
+	                const newX = clamp(parseInt(xAxisSelect.value) || 0);
+	                const newY = clamp(parseInt(yAxisSelect.value) || 0);
+	                const newZ = clamp(parseInt(zAxisSelect.value) || 0);
 	
 	                // Check if changes are needed
 	                const xChanged = newX !== CONFIG.axes.x;
@@ -4958,7 +5028,10 @@
 	        this.state = new VisState(model);
 	        this.selMgr = new SelectionManager(model, this.state);
 	        this.state.addEventListener('selection', () => this._updateColors());
-	        this.state.addEventListener('vis', () => this._updateColors());
+	        this.state.addEventListener('vis', () => {
+	            this._updateColors();
+	            this.renderer.setClearColor(this.state.bgColor);
+	        });
 	
 	        /* ── viewer settings - using CONFIG ──────────────────── */
 	        this.settings = {
@@ -5008,14 +5081,14 @@
 	            // Don't process clicks during touch interactions
 	            if (this.touchState.panDisablesInteraction) return;
 	
-	            if (!this.selectOnClick || this.hoverId == null) return;
+	            if (!this.selectOnClick || this.hoverId === null) return;
 	            const v = this.model.row(this.hoverId)[this.state.selectBy];
 	            this.state.toggleValue(v);
 	        });
 	
 	        /* right-click handler */
 	        window.addEventListener('contextmenu', (e) => {
-	            if (!this.rightClickActive || this.hoverId == null) return;
+	            if (!this.rightClickActive || this.hoverId === null) return;
 	            e.preventDefault(); // Prevent default context menu
 	
 	            const row = this.model.row(this.hoverId);
@@ -5031,7 +5104,7 @@
 	                this._removeInfoBox(parseInt(infoBox.dataset.boxId));
 	                return;
 	            }
-	            if (!CONFIG.middleClick.enabled || this.hoverId == null) return;
+	            if (!CONFIG.middleClick.enabled || this.hoverId === null) return;
 	            const row = this.model.row(this.hoverId);
 	            this._createInfoBox(row, this.hoverId, e.clientX, e.clientY);
 	        });
@@ -5545,7 +5618,7 @@
 	
 	    _setupRenderer() {
 	        this.renderer.setSize(window.innerWidth, window.innerHeight);
-	        this.renderer.setClearColor(CONFIG.rendering.clearColor);
+	        this.renderer.setClearColor(this.state.bgColor);
 	        document.getElementById('container').appendChild(this.renderer.domElement);
 	
 	        // Set camera position and rotation from CONFIG
@@ -5594,7 +5667,7 @@
 	    }
 	
 	    _updateCrosshairs(id) {
-	        if (!this.hoverActive || id == null) {
+	        if (!this.hoverActive || id === null) {
 	            this.crossH.visible = this.crossV.visible = false;
 	            return;
 	        }
@@ -6140,6 +6213,10 @@
 							<label>Color:</label>
 							<input id="nonSelColor" type="color" value="#666666">
 						</div>
+						<div class="control-row">
+							<label>Background:</label>
+							<input id="bgColor" type="color" value="#000011">
+						</div>
 					</div>
 				</div>
 			</div>
@@ -6151,7 +6228,7 @@
 							<input id="speed" type="range" min="1" max="200" step="1" value="50">
 						</div>
 						<span class="value-display-right" id="speedValue">50</span></label>
-					</di v>
+					</div>
 				</div>
 				<!-- Axis Selection - Three Columns -->
 				<div class="control-section">
