@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- source repo: https://github.com/mivanit/js-embedding-vis -->
-<!-- version: v0.1.0 -->
+<!-- version: v0.2.1 -->
 <html lang="en">
 
 <head>
@@ -2002,7 +2002,11 @@
 					const text = await resp.text();
 	
 					pbar.progress(0.3);
-					df = DataFrame.from_jsonl(text);
+					if (filename.toLowerCase().endsWith('.csv')) {
+						df = DataFrame.from_csv(text);
+					} else {
+						df = DataFrame.from_jsonl(text);
+					}
 					pbar.progress(0.6);
 				}
 	
