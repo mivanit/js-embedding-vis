@@ -84,7 +84,11 @@ class DataModel {
 				const text = await resp.text();
 
 				pbar.progress(0.3);
-				df = DataFrame.from_jsonl(text);
+				if (filename.toLowerCase().endsWith('.csv')) {
+					df = DataFrame.from_csv(text);
+				} else {
+					df = DataFrame.from_jsonl(text);
+				}
 				pbar.progress(0.6);
 			}
 
