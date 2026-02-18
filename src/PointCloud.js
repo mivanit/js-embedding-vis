@@ -141,10 +141,9 @@ class PointCloud {
         /* info box dragging */
         window.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
-            const header = e.target.closest('.info-box-header');
-            if (!header) return;
-            const infoBox = header.closest('.info-box');
+            const infoBox = e.target.closest('.info-box');
             if (!infoBox) return;
+            if (e.target.closest('.info-box-close')) return;
             const rect = infoBox.getBoundingClientRect();
             this.infoBoxDragging = {
                 boxId: parseInt(infoBox.dataset.boxId),
