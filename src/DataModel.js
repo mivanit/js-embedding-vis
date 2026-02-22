@@ -27,9 +27,9 @@ class DataModel {
 	static async load(filename, numericalPrefix) {
 		const spinner = NOTIF.spinner('Processing data...');
 
+		let pbar;
 		try {
 			let df;
-			let pbar;
 
 			// Check if dataFile is null - use embedded data
 			if (filename === null || filename === undefined) {
