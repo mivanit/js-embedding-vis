@@ -1,6 +1,6 @@
 [project]
 	name = "js-embedding-vis"
-	version = "0.2.2"
+	version = "0.2.3"
 	description = "python package for easy shipping of js-embedding-vis"
 	requires-python = ">=3.10"
 	readme = "README.md"

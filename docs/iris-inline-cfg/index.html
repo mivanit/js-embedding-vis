@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- source repo: https://github.com/mivanit/js-embedding-vis -->
-<!-- version: v0.1.0 -->
+<!-- version: v0.2.3 -->
 <html lang="en">
 
 <head>
@@ -3635,9 +3635,9 @@
 		static async load(filename, numericalPrefix) {
 			const spinner = NOTIF.spinner('Processing data...');
 	
+			let pbar;
 			try {
 				let df;
-				let pbar;
 	
 				// Check if dataFile is null - use embedded data
 				if (filename === null || filename === undefined) {
@@ -3692,7 +3692,11 @@
 					const text = await resp.text();
 	
 					pbar.progress(0.3);
-					df = DataFrame.from_jsonl(text);
+					if (filename.toLowerCase().endsWith('.csv')) {
+						df = DataFrame.from_csv(text);
+					} else {
+						df = DataFrame.from_jsonl(text);
+					}
 					pbar.progress(0.6);
 				}
 	
@@ -5112,10 +5116,9 @@
 	        /* info box dragging */
 	        window.addEventListener('mousedown', (e) => {
 	            if (e.button !== 0) return;
-	            const header = e.target.closest('.info-box-header');
-	            if (!header) return;
-	            const infoBox = header.closest('.info-box');
+	            const infoBox = e.target.closest('.info-box');
 	            if (!infoBox) return;
+	            if (e.target.closest('.info-box-close')) return;
 	            const rect = infoBox.getBoundingClientRect();
 	            this.infoBoxDragging = {
 	                boxId: parseInt(infoBox.dataset.boxId),
