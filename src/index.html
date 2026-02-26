@@ -255,6 +255,17 @@
 					const pointCloud = new PointCloud(model);
 					const uiManager = new UIManager(pointCloud);
 					pointCloud.setUIManager(uiManager);
+
+					// Call onReady hook
+					if (HOOKS.onReady) {
+						try {
+							await HOOKS.onReady(pointCloud, uiManager);
+						} catch (err) {
+							console.error('onReady hook error:', err);
+							NOTIF.error('Extension init error: ' + err.message);
+						}
+					}
+
 					sp.complete();
 					NOTIF.success('Ready! Press H for help.');
 				} catch (error) {

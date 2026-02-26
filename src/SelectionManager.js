@@ -50,6 +50,18 @@ class SelectionManager {
 	attrs(rowId) {
 		const row = this.model.row(rowId);
 
+		// Color override hook (highest priority)
+		if (HOOKS.colorOverrideFn) {
+			const override = HOOKS.colorOverrideFn(rowId, row);
+			if (override != null) {
+				return {
+					r: override.r, g: override.g, b: override.b,
+					size: override.size ?? this.state.selSize,
+					opacity: override.opacity ?? this.state.selOp
+				};
+			}
+		}
+
 		// Check highlight groups FIRST (supersedes selection)
 		const highlightGroup = this._getHighlightGroup(row);
 		if (highlightGroup) {

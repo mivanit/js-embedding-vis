@@ -13,6 +13,18 @@ class UIManager {
             stats: { key: 'KeyJ', elementId: 'statsMenu', shortcutText: 'j – stats', visible: CONFIG.panels.stats }
         };
 
+        /* register custom extension panels ------------------------------ */
+        if (CONFIG.customPanels && Array.isArray(CONFIG.customPanels)) {
+            for (const panel of CONFIG.customPanels) {
+                this.uiConfig[`custom_${panel.id}`] = {
+                    key: panel.key,
+                    elementId: `customPanel-${panel.id}`,
+                    shortcutText: panel.shortcutText,
+                    visible: panel.visible ?? false
+                };
+            }
+        }
+
         /* categorical columns for c / v cycling ------------------------ */
         this.cats = this.pointCloud.model.df.columns
             .filter(c => !c.startsWith(CONFIG.numericalPrefix));
@@ -36,6 +48,7 @@ class UIManager {
 
     /* ========================================================= */
     _init() {
+        this._createCustomPanels();
         this._buildShortcutsLegend();
         this._setupControlSliders();
         this._bindKeys();
@@ -64,6 +77,26 @@ class UIManager {
             this._updateLegendDisplay();
             this._updateSelectedValuesDisplay();
         });
+    }
+
+    _createCustomPanels() {
+        if (!CONFIG.customPanels?.length) return;
+        const container = document.getElementById('container');
+        for (const panel of CONFIG.customPanels) {
+            const el = document.createElement('div');
+            el.id = `customPanel-${panel.id}`;
+            el.className = 'menu custom-panel';
+            if (panel.position) {
+                for (const [prop, val] of Object.entries(panel.position))
+                    el.style[prop] = val;
+            }
+            el.innerHTML = `
+                <h4 style="margin:0 0 8px;color:#00ccff;">${panel.title || panel.id}</h4>
+                <div class="custom-panel-body">${panel.html || ''}</div>
+                <div class="close-hint">Press ${panel.shortcutText?.split('–')[0]?.trim() || '?'} to close</div>`;
+            el.style.display = (panel.visible ?? false) ? 'block' : 'none';
+            container.appendChild(el);
+        }
     }
 
     _applyInitialPanelVisibility() {
@@ -716,7 +749,13 @@ class UIManager {
         cfg.visible = !cfg.visible;
 
         // Update CONFIG to keep it in sync
-        CONFIG.panels[name] = cfg.visible;
+        if (name.startsWith('custom_')) {
+            const panelDef = CONFIG.customPanels?.find(
+                p => p.id === name.replace('custom_', ''));
+            if (panelDef) panelDef.visible = cfg.visible;
+        } else {
+            CONFIG.panels[name] = cfg.visible;
+        }
         updateURL(); // Sync to URL
 
         document.getElementById(cfg.elementId).style.display = cfg.visible ? 'block' : 'none';
@@ -805,10 +844,16 @@ class UIManager {
             this.pointCloud.model.getCoord(id, a.y).toFixed(2),
             this.pointCloud.model.getCoord(id, a.z).toFixed(2)
         ];
-        const html = CONFIG.hoverColumns
+        let html = CONFIG.hoverColumns
             .map(c => `<b>${c}</b>: ${row[c]}`)
             .concat([`<b>coord</b>: [${xyz.join(', ')}]`])
             .join('<br>');
+
+        // Hover extension hook
+        if (HOOKS.hoverExtendFn) {
+            const extra = HOOKS.hoverExtendFn(id, row);
+            if (extra) html += '<hr style="border-color:#333;margin:4px 0">' + extra;
+        }
 
         this.hoverPanel.innerHTML = html;
         const { x, y } = this.pointCloud.pointerScreen;

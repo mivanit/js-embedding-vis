@@ -10,8 +10,10 @@ HTML_URL: Final[str] = (
 )
 
 REPLACE_CONFIG_STRING: Final[str] = "/*$$$INLINE_CONFIG$$$*/"
-
 REPLACE_CONFIG_FMT: Final[str] = "var INLINE_CONFIG = {cfg_json};"
+
+REPLACE_HOOKS_STRING: Final[str] = "/*$$$INLINE_HOOKS$$$*/"
+REPLACE_HOOKS_FMT: Final[str] = "{hooks_js}"
 
 
 def fetch_jev_remote(url: str = HTML_URL) -> str:
@@ -75,6 +77,27 @@ def inline_config(
     return html.replace(
         replace_config_string,
         replace_config_fmt.format(cfg_json=cfg_json),
+    )
+
+
+def inline_hooks(
+    hooks_js: str,
+    html: str,
+    replace_hooks_string: str = REPLACE_HOOKS_STRING,
+    replace_hooks_fmt: str = REPLACE_HOOKS_FMT,
+) -> str:
+    """Inline raw JS that sets HOOKS properties into the HTML file"""
+
+    n_occurrences: int = html.count(replace_hooks_string)
+    if n_occurrences != 1:
+        raise ValueError(
+            f"Expected exactly one occurrence of '{replace_hooks_string}' in the HTML, "
+            f"found {n_occurrences} occurrences."
+        )
+
+    return html.replace(
+        replace_hooks_string,
+        replace_hooks_fmt.format(hooks_js=hooks_js),
     )
 
 

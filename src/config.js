@@ -2,6 +2,14 @@ var INLINE_CONFIG = null; // For inline config overrides
 
 /*$$$INLINE_CONFIG$$$*/
 
+var HOOKS = {
+	colorOverrideFn: null,   // (rowIndex, row) => {r, g, b} | null
+	hoverExtendFn: null,     // (rowIndex, row) => htmlString | null
+	onReady: null,           // async (pointCloud, uiManager) => void
+};
+
+/*$$$INLINE_HOOKS$$$*/
+
 
 /* global, mutable CONFIG + helper to merge an optional config.json */
 function getDefaultConfig() {
@@ -172,6 +180,10 @@ function getDefaultConfig() {
 		// Highlight groups - custom groups to highlight via URL or config
 		// Format: { groupName: { col: "columnName", values: ["val1", "val2"], color: "#ff0000" } }
 		highlightGroups: {},
+
+		// Custom extension panels
+		// Format: { id, title, key, shortcutText, visible, html, position? }
+		customPanels: [],
 	}
 
 	if (INLINE_CONFIG) {
@@ -371,6 +383,11 @@ function generateURLParams() {
 			continue;
 		}
 
+		// Skip customPanels - too large for URL
+		if (path.startsWith('customPanels')) {
+			continue;
+		}
+
 		// Special handling for arrays
 		if (Array.isArray(value)) {
 			if (value.length > 0) {
@@ -413,6 +430,7 @@ function findConfigDifferences(current, base, prefix = '') {
 			// Skip the data field to prevent huge URLs
 			continue;
 		}
+		if (typeof current[key] === 'function') continue;
 		const currentPath = prefix ? `${prefix}.${key}` : key;
 		const currentValue = current[key];
 		const baseValue = base[key];
@@ -465,7 +483,8 @@ function arraysEqual(arr1, arr2) {
  * Get the current configuration as a formatted JSON string
  */
 function getConfigAsJSON() {
-	return JSON.stringify(CONFIG, null, 2);
+	return JSON.stringify(CONFIG, (key, value) =>
+		typeof value === 'function' ? undefined : value, 2);
 }
 
 /**

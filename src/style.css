@@ -727,3 +727,7 @@ button:hover {
 	fill: #ffff00;
 	fill-opacity: 0.8;
 }
+
+/* Custom extension panels */
+.custom-panel { max-width: 400px; max-height: 60vh; overflow-y: auto; }
+.custom-panel-body { font-size: 12px; }
