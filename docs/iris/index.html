@@ -745,6 +745,10 @@
 		fill: #ffff00;
 		fill-opacity: 0.8;
 	}
+	
+	/* Custom extension panels */
+	.custom-panel { max-width: 400px; max-height: 60vh; overflow-y: auto; }
+	.custom-panel-body { font-size: 12px; }
 	</style>
 	<!-- end 'style.css' -->
 		<!-- begin 'notif.css' -->
@@ -861,6 +865,14 @@
 	var INLINE_CONFIG = null; // For inline config overrides
 	
 	/*$$$INLINE_CONFIG$$$*/
+	
+	var HOOKS = {
+		colorOverrideFn: null,   // (rowIndex, row) => {r, g, b} | null
+		hoverExtendFn: null,     // (rowIndex, row) => htmlString | null
+		onReady: null,           // async (pointCloud, uiManager) => void
+	};
+	
+	/*$$$INLINE_HOOKS$$$*/
 	
 	
 	/* global, mutable CONFIG + helper to merge an optional config.json */
@@ -1032,6 +1044,10 @@
 			// Highlight groups - custom groups to highlight via URL or config
 			// Format: { groupName: { col: "columnName", values: ["val1", "val2"], color: "#ff0000" } }
 			highlightGroups: {},
+	
+			// Custom extension panels
+			// Format: { id, title, key, shortcutText, visible, html, position? }
+			customPanels: [],
 		}
 	
 		if (INLINE_CONFIG) {
@@ -1231,6 +1247,11 @@
 				continue;
 			}
 	
+			// Skip customPanels - too large for URL
+			if (path.startsWith('customPanels')) {
+				continue;
+			}
+	
 			// Special handling for arrays
 			if (Array.isArray(value)) {
 				if (value.length > 0) {
@@ -1273,6 +1294,7 @@
 				// Skip the data field to prevent huge URLs
 				continue;
 			}
+			if (typeof current[key] === 'function') continue;
 			const currentPath = prefix ? `${prefix}.${key}` : key;
 			const currentValue = current[key];
 			const baseValue = base[key];
@@ -1325,7 +1347,8 @@
 	 * Get the current configuration as a formatted JSON string
 	 */
 	function getConfigAsJSON() {
-		return JSON.stringify(CONFIG, null, 2);
+		return JSON.stringify(CONFIG, (key, value) =>
+			typeof value === 'function' ? undefined : value, 2);
 	}
 	
 	/**
@@ -2103,6 +2126,18 @@
 		attrs(rowId) {
 			const row = this.model.row(rowId);
 	
+			// Color override hook (highest priority)
+			if (HOOKS.colorOverrideFn) {
+				const override = HOOKS.colorOverrideFn(rowId, row);
+				if (override != null) {
+					return {
+						r: override.r, g: override.g, b: override.b,
+						size: override.size ?? this.state.selSize,
+						opacity: override.opacity ?? this.state.selOp
+					};
+				}
+			}
+	
 			// Check highlight groups FIRST (supersedes selection)
 			const highlightGroup = this._getHighlightGroup(row);
 			if (highlightGroup) {
@@ -2403,6 +2438,18 @@
 	            stats: { key: 'KeyJ', elementId: 'statsMenu', shortcutText: 'j – stats', visible: CONFIG.panels.stats }
 	        };
 	
+	        /* register custom extension panels ------------------------------ */
+	        if (CONFIG.customPanels && Array.isArray(CONFIG.customPanels)) {
+	            for (const panel of CONFIG.customPanels) {
+	                this.uiConfig[`custom_${panel.id}`] = {
+	                    key: panel.key,
+	                    elementId: `customPanel-${panel.id}`,
+	                    shortcutText: panel.shortcutText,
+	                    visible: panel.visible ?? false
+	                };
+	            }
+	        }
+	
 	        /* categorical columns for c / v cycling ------------------------ */
 	        this.cats = this.pointCloud.model.df.columns
 	            .filter(c => !c.startsWith(CONFIG.numericalPrefix));
@@ -2426,6 +2473,7 @@
 	
 	    /* ========================================================= */
 	    _init() {
+	        this._createCustomPanels();
 	        this._buildShortcutsLegend();
 	        this._setupControlSliders();
 	        this._bindKeys();
@@ -2454,6 +2502,26 @@
 	            this._updateLegendDisplay();
 	            this._updateSelectedValuesDisplay();
 	        });
+	    }
+	
+	    _createCustomPanels() {
+	        if (!CONFIG.customPanels?.length) return;
+	        const container = document.getElementById('container');
+	        for (const panel of CONFIG.customPanels) {
+	            const el = document.createElement('div');
+	            el.id = `customPanel-${panel.id}`;
+	            el.className = 'menu custom-panel';
+	            if (panel.position) {
+	                for (const [prop, val] of Object.entries(panel.position))
+	                    el.style[prop] = val;
+	            }
+	            el.innerHTML = `
+	                <h4 style="margin:0 0 8px;color:#00ccff;">${panel.title || panel.id}</h4>
+	                <div class="custom-panel-body">${panel.html || ''}</div>
+	                <div class="close-hint">Press ${panel.shortcutText?.split('–')[0]?.trim() || '?'} to close</div>`;
+	            el.style.display = (panel.visible ?? false) ? 'block' : 'none';
+	            container.appendChild(el);
+	        }
 	    }
 	
 	    _applyInitialPanelVisibility() {
@@ -3106,7 +3174,13 @@
 	        cfg.visible = !cfg.visible;
 	
 	        // Update CONFIG to keep it in sync
-	        CONFIG.panels[name] = cfg.visible;
+	        if (name.startsWith('custom_')) {
+	            const panelDef = CONFIG.customPanels?.find(
+	                p => p.id === name.replace('custom_', ''));
+	            if (panelDef) panelDef.visible = cfg.visible;
+	        } else {
+	            CONFIG.panels[name] = cfg.visible;
+	        }
 	        updateURL(); // Sync to URL
 	
 	        document.getElementById(cfg.elementId).style.display = cfg.visible ? 'block' : 'none';
@@ -3195,10 +3269,16 @@
 	            this.pointCloud.model.getCoord(id, a.y).toFixed(2),
 	            this.pointCloud.model.getCoord(id, a.z).toFixed(2)
 	        ];
-	        const html = CONFIG.hoverColumns
+	        let html = CONFIG.hoverColumns
 	            .map(c => `<b>${c}</b>: ${row[c]}`)
 	            .concat([`<b>coord</b>: [${xyz.join(', ')}]`])
 	            .join('<br>');
+	
+	        // Hover extension hook
+	        if (HOOKS.hoverExtendFn) {
+	            const extra = HOOKS.hoverExtendFn(id, row);
+	            if (extra) html += '<hr style="border-color:#333;margin:4px 0">' + extra;
+	        }
 	
 	        this.hoverPanel.innerHTML = html;
 	        const { x, y } = this.pointCloud.pointerScreen;
@@ -4648,6 +4728,17 @@
 					const pointCloud = new PointCloud(model);
 					const uiManager = new UIManager(pointCloud);
 					pointCloud.setUIManager(uiManager);
+
+					// Call onReady hook
+					if (HOOKS.onReady) {
+						try {
+							await HOOKS.onReady(pointCloud, uiManager);
+						} catch (err) {
+							console.error('onReady hook error:', err);
+							NOTIF.error('Extension init error: ' + err.message);
+						}
+					}
+
 					sp.complete();
 					NOTIF.success('Ready! Press H for help.');
 				} catch (error) {
