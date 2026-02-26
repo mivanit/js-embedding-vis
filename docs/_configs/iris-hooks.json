@@ -1,0 +1,53 @@
+{
+	"dataFile": "iris.jsonl",
+	"numericalPrefix": "pc.",
+	"defaultColorColumn": "target_name",
+	"defaultSelectionColumn": "target_name",
+	"hoverColumns": [
+		"target_name",
+		"data.sepal length (cm)",
+		"data.sepal width (cm)",
+		"data.petal length (cm)",
+		"data.petal width (cm)"
+	],
+	"selectedPoints": {
+		"size": 5,
+		"sizeMin": 0.1,
+		"sizeMax": 20,
+		"sizeStep": 0.1,
+		"opacityMin": 0.0,
+		"opacityStep": 0.01
+	},
+	"nonSelectedPoints": {
+		"size": 3,
+		"sizeMin": 0.1,
+		"sizeStep": 0.1,
+		"opacityMin": 0.00
+	},
+	"movement": {
+		"speed": 25,
+		"speedMin": 1,
+		"rollSpeed": 0.02,
+		"mouseSensitivity": 0.002,
+		"sprintMultiplier": 3
+	},
+	"camera": {
+		"position": {
+			"z": 5
+		}
+	},
+	"middleClick": {
+		"enabled": true,
+		"title": "{target_name}",
+		"content": "<div style='font-family: monospace;'><b>Species:</b> {target_name}<br><b>Sepal:</b> {data.sepal length (cm)} × {data.sepal width (cm)} cm<br><b>Petal:</b> {data.petal length (cm)} × {data.petal width (cm)} cm</div>"
+	},
+	"customPanels": [{
+		"id": "hooks-demo",
+		"title": "Extensions Demo",
+		"key": "Digit1",
+		"shortcutText": "1 – extensions",
+		"visible": true,
+		"html": "<label style='cursor:pointer'><input type='checkbox' id='customColorToggle'> Color by petal length</label><br><small style='color:#888'>Blue→red gradient based on petal length.<br>Hover any point to see computed petal area.</small>",
+		"position": { "top": "10px", "right": "10px" }
+	}]
+}

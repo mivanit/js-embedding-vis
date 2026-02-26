@@ -22,8 +22,12 @@ docs/iris-inline-data:
 docs/iris-inline-cfg/index.html:
 	$(PYTHON) -m js_embedding_vis --cfg-path docs/_configs/iris-inline-data.json --out-path docs/iris-inline-cfg/index.html
 
+docs/iris-hooks/index.html: bundle docs/iris/iris.jsonl
+	$(PYTHON) dev_scripts/gen_hooks_demo.py
+	cp docs/iris/iris.jsonl docs/iris-hooks/iris.jsonl
+
 .PHONY: demo-data
-demo-data: docs/digits/digits.jsonl docs/iris/iris.jsonl docs/stress/stress.jsonl docs/iris-inline-data docs/iris-inline-cfg/index.html
+demo-data: docs/digits/digits.jsonl docs/iris/iris.jsonl docs/stress/stress.jsonl docs/iris-inline-data docs/iris-inline-cfg/index.html docs/iris-hooks/index.html
 
 .PHONY: demo
 demo: bundle demo-data
@@ -44,3 +48,4 @@ clean:
 	rm -rf docs/stress
 	rm -rf docs/iris-inline-data
 	rm -rf docs/iris-inline-cfg
+	rm -rf docs/iris-hooks
