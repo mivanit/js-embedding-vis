@@ -239,23 +239,28 @@
 		<script>
 			document.addEventListener('DOMContentLoaded', async () => {
 				let sp = NOTIF.spinner('Starting up...');
-				await getConfig();
+				try {
+					await getConfig();
 
-				// Update page title from config
-				document.title = CONFIG.info.title;
+					// Update page title from config
+					document.title = CONFIG.info.title;
 
-				// Update help info section
-				const helpInfoEl = document.getElementById('helpInfo');
-				if (helpInfoEl && CONFIG.info.help) {
-					helpInfoEl.innerHTML = `<p>${CONFIG.info.help}</p>`;
+					// Update help info section
+					const helpInfoEl = document.getElementById('helpInfo');
+					if (helpInfoEl && CONFIG.info.help) {
+						helpInfoEl.innerHTML = `<p>${CONFIG.info.help}</p>`;
+					}
+
+					const model = await DataModel.load(CONFIG.dataFile, CONFIG.numericalPrefix);
+					const pointCloud = new PointCloud(model);
+					const uiManager = new UIManager(pointCloud);
+					pointCloud.setUIManager(uiManager);
+					sp.complete();
+					NOTIF.success('Ready! Press H for help.');
+				} catch (error) {
+					sp.complete();
+					throw error;
 				}
-
-				const model = await DataModel.load(CONFIG.dataFile, CONFIG.numericalPrefix);
-				const pointCloud = new PointCloud(model);
-				const uiManager = new UIManager(pointCloud);
-				pointCloud.setUIManager(uiManager);
-				sp.complete();
-				NOTIF.success('Ready! Press H for help.');
 			});
 		</script>
 		<!-- Info box containers for middle-click functionality -->
