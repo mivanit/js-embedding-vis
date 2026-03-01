@@ -728,6 +728,34 @@ button:hover {
 	fill-opacity: 0.8;
 }
 
-/* Custom extension panels */
-.custom-panel { max-width: 400px; max-height: 60vh; overflow-y: auto; }
+/* Custom extension panels – flow container for auto-positioned panels */
+#custom-panels-flow {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	pointer-events: none;
+	z-index: 1100;
+	max-width: calc(100vw - 250px);
+}
+
+.custom-panel {
+	background: rgba(0, 0, 0, 0.92);
+	max-width: 400px;
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+/* Explicitly-positioned panels need their own z-index */
+#container > .custom-panel {
+	z-index: 1100;
+}
+
+#custom-panels-flow > .custom-panel {
+	position: static;
+	pointer-events: auto;
+}
+
 .custom-panel-body { font-size: 12px; }

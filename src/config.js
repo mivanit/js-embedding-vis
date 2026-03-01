@@ -182,7 +182,12 @@ function getDefaultConfig() {
 		highlightGroups: {},
 
 		// Custom extension panels
-		// Format: { id, title, key, shortcutText, visible, html, position? }
+		// Format: { id, title, key, shortcutText, visible, html,
+		//   position?: { top, left, right, bottom },  -- CSS positioning overrides
+		//   style?: { ... },      -- arbitrary CSS properties (background, zIndex, etc.)
+		//   className?: "...",    -- additional CSS class(es) to add
+		//   draggable?: bool      -- make panel draggable by its header
+		// }
 		customPanels: [],
 	}
 

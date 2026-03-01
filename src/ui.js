@@ -82,20 +82,94 @@ class UIManager {
     _createCustomPanels() {
         if (!CONFIG.customPanels?.length) return;
         const container = document.getElementById('container');
+
+        // Flow container for auto-positioned panels (no explicit position)
+        let flowContainer = document.getElementById('custom-panels-flow');
+        if (!flowContainer) {
+            flowContainer = document.createElement('div');
+            flowContainer.id = 'custom-panels-flow';
+            container.appendChild(flowContainer);
+        }
+
         for (const panel of CONFIG.customPanels) {
             const el = document.createElement('div');
             el.id = `customPanel-${panel.id}`;
             el.className = 'menu custom-panel';
-            if (panel.position) {
+
+            // Additional consumer CSS classes
+            if (panel.className) {
+                el.classList.add(...panel.className.trim().split(/\s+/));
+            }
+
+            const hasExplicitPosition = !!panel.position;
+
+            // Position: explicit config → absolute in #container
+            if (hasExplicitPosition) {
                 for (const [prop, val] of Object.entries(panel.position))
                     el.style[prop] = val;
             }
-            el.innerHTML = `
-                <h4 style="margin:0 0 8px;color:#00ccff;">${panel.title || panel.id}</h4>
-                <div class="custom-panel-body">${panel.html || ''}</div>
-                <div class="close-hint">Press ${panel.shortcutText?.split('–')[0]?.trim() || '?'} to close</div>`;
+
+            // Arbitrary style overrides (applied last for highest specificity)
+            if (panel.style) {
+                for (const [prop, val] of Object.entries(panel.style))
+                    el.style[prop] = val;
+            }
+
+            const header = document.createElement('h4');
+            header.style.cssText = 'margin:0 0 8px;color:#00ccff;';
+            header.textContent = panel.title || panel.id;
+
+            el.appendChild(header);
+
+            const body = document.createElement('div');
+            body.className = 'custom-panel-body';
+            body.innerHTML = panel.html || '';
+            el.appendChild(body);
+
+            const hint = document.createElement('div');
+            hint.className = 'close-hint';
+            hint.textContent = `Press ${panel.shortcutText?.split('–')[0]?.trim() || '?'} to close`;
+            el.appendChild(hint);
+
+            // Draggable support
+            if (panel.draggable) {
+                header.style.cursor = 'move';
+                header.style.userSelect = 'none';
+                header.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    const startX = e.clientX, startY = e.clientY;
+                    const rect = el.getBoundingClientRect();
+                    const origLeft = rect.left, origTop = rect.top;
+                    // Pop out of flow container into absolute positioning
+                    if (el.parentElement === flowContainer) {
+                        el.style.position = 'absolute';
+                        el.style.left = `${origLeft}px`;
+                        el.style.top = `${origTop}px`;
+                        container.appendChild(el);
+                    }
+                    const onMove = e2 => {
+                        el.style.left = `${origLeft + e2.clientX - startX}px`;
+                        el.style.top = `${origTop + e2.clientY - startY}px`;
+                        el.style.right = 'auto';
+                        el.style.bottom = 'auto';
+                    };
+                    const onUp = () => {
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                    };
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+            }
+
             el.style.display = (panel.visible ?? false) ? 'block' : 'none';
-            container.appendChild(el);
+
+            // Auto-positioned panels go in the flow container; explicit ones in #container
+            if (hasExplicitPosition) {
+                container.appendChild(el);
+            } else {
+                flowContainer.appendChild(el);
+            }
         }
     }
 
@@ -151,12 +225,17 @@ class UIManager {
         const sc = document.getElementById('shortcuts');
         sc.innerHTML = '<div>wasd – move</div><div>mouse + Q/E – roll</div>';
 
-        Object.values(this.uiConfig).forEach(cfg => {
+        const addShortcut = cfg => {
             const d = document.createElement('div');
             d.className = 'shortcut-link';
             d.dataset.action = cfg.elementId;
             d.innerHTML = `${cfg.shortcutText} <span class="status-indicator ${cfg.visible ? 'status-enabled' : 'status-disabled'}">(${cfg.visible ? 'enabled' : 'disabled'})</span>`;
             sc.appendChild(d);
+        };
+
+        // Built-in panels first
+        Object.entries(this.uiConfig).forEach(([name, cfg]) => {
+            if (!name.startsWith('custom_')) addShortcut(cfg);
         });
 
         // Add hover, click-select, and right-click shortcuts with status indicators from CONFIG
@@ -165,6 +244,11 @@ class UIManager {
         <div class="shortcut-link" data-action="click-select-toggle">b – click-select <span class="status-indicator ${CONFIG.interaction.selectOnClick ? 'status-enabled' : 'status-disabled'}" id="click-select-status">(${CONFIG.interaction.selectOnClick ? 'enabled' : 'disabled'})</span></div>
         <div class="shortcut-link" data-action="right-click-toggle">o – right-click <span class="status-indicator ${CONFIG.interaction.rightClickActive ? 'status-enabled' : 'status-disabled'}" id="right-click-status">(${CONFIG.interaction.rightClickActive ? 'enabled' : 'disabled'})</span></div>
         <div class="shortcut-link" data-action="middle-click-toggle">p – middle-click <span class="status-indicator ${CONFIG.middleClick.enabled ? 'status-enabled' : 'status-disabled'}" id="middle-click-status">(${CONFIG.middleClick.enabled ? 'enabled' : 'disabled'})</span></div>`);
+
+        // Custom extension panels at the bottom
+        Object.entries(this.uiConfig).forEach(([name, cfg]) => {
+            if (name.startsWith('custom_')) addShortcut(cfg);
+        });
 
         sc.addEventListener('click', e => {
             const target = e.target.closest('[data-action]');
