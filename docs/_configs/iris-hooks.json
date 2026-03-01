@@ -48,6 +48,15 @@
 		"shortcutText": "1 – extensions",
 		"visible": true,
 		"html": "<label style='cursor:pointer'><input type='checkbox' id='customColorToggle'> Color by petal length</label><br><small style='color:#888'>Blue→red gradient based on petal length.<br>Hover any point to see computed petal area.</small>",
-		"position": { "top": "10px", "right": "10px" }
+		"draggable": true
+	}, {
+		"id": "dataset-info",
+		"title": "Dataset Info",
+		"key": "Digit2",
+		"shortcutText": "2 – dataset info",
+		"visible": true,
+		"html": "<div id='datasetInfoBody'>Loading...</div>",
+		"draggable": true,
+		"style": { "borderLeft": "3px solid #ff8800" }
 	}]
 }
