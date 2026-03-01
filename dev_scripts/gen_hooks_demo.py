@@ -30,6 +30,20 @@ HOOKS.onReady = async (pointCloud, uiManager) => {
         const pw = parseFloat(row['data.petal width (cm)']);
         return '<b>Petal area</b>: ' + (pl * pw).toFixed(2) + ' cm\u00B2';
     };
+
+    // Populate the Dataset Info panel
+    const rows = pointCloud.model.df.data;
+    const counts = {};
+    for (const row of rows) {
+        const species = row['target_name'] || 'unknown';
+        counts[species] = (counts[species] || 0) + 1;
+    }
+    const lines = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, n]) => `<b>${name}</b>: ${n}`)
+        .join('<br>');
+    const el = document.getElementById('datasetInfoBody');
+    if (el) el.innerHTML = `<b>Total points:</b> ${rows.length}<br><br>${lines}`;
 };
 """.strip()
 
