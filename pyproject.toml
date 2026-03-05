@@ -21,6 +21,7 @@
 		"scikit-learn",
 		# formatting
 		"ruff",
+		"ty",
 	]
 
 [build-system]

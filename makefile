@@ -49,3 +49,9 @@ clean:
 	rm -rf docs/iris-inline-data
 	rm -rf docs/iris-inline-cfg
 	rm -rf docs/iris-hooks
+
+.PHONY: check
+check:
+	ruff check --fix .
+	ruff format .
+	ty check .
