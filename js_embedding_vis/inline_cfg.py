@@ -40,7 +40,7 @@ def fetch_jev_pkg() -> str:
     import js_embedding_vis
 
     index_html_pkg_path: Path = (
-        Path(importlib.resources.files(js_embedding_vis)) / "index.html"
+        Path(str(importlib.resources.files(js_embedding_vis))) / "index.html"
     )
     return index_html_pkg_path.read_text(encoding="utf-8")
 
@@ -106,7 +106,7 @@ def write_inlined_config(
     cfg_path: Optional[Path] = None,
     html: Optional[str] = None,
     html_src: HtmlSource = "pkg",
-    out_path: Path = "bundled/index.html",
+    out_path: Path = Path("bundled/index.html"),
     replace_config_string: str = REPLACE_CONFIG_STRING,
     replace_config_fmt: str = REPLACE_CONFIG_FMT,
 ) -> None:
@@ -127,6 +127,7 @@ def write_inlined_config(
     else:
         html_ = html
 
+    assert cfg is not None
     inlined_html: str = inline_config(
         cfg=cfg,
         html=html_,
