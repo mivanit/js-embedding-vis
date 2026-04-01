@@ -60,6 +60,7 @@ class PointCloud {
         this.state.addEventListener('vis', () => {
             this._updateColors();
             this.renderer.setClearColor(this.state.bgColor);
+            document.documentElement.style.setProperty('--bg-color', this.state.bgColor);
         });
 
         /* ── viewer settings - using CONFIG ──────────────────── */

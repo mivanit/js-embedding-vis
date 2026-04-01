@@ -241,6 +241,7 @@
 				let sp = NOTIF.spinner('Starting up...');
 				try {
 					await getConfig();
+					document.documentElement.style.setProperty('--bg-color', CONFIG.rendering.clearColor);
 
 					// Update page title from config
 					document.title = CONFIG.info.title;
