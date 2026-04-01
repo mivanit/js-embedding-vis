@@ -16,11 +16,15 @@
 	<!-- styles -->
 		<!-- begin 'style.css' -->
 	<style>
+	:root {
+		--bg-color: #000011;
+	}
+	
 	/* Base styles */
 	body {
 		margin: 0;
 		padding: 0;
-		background: #000;
+		background: var(--bg-color);
 		font-family: 'Courier New', monospace;
 		overflow: hidden;
 	}
@@ -36,7 +40,7 @@
 		position: absolute;
 		top: 20px;
 		right: 20px;
-		background: rgba(0, 0, 0, 0.7);
+		background: color-mix(in srgb, var(--bg-color) 70%, transparent);
 		padding: 10px;
 		border-radius: 8px;
 		color: #00ff00;
@@ -59,7 +63,7 @@
 	/* Menu base styles */
 	.menu {
 		position: absolute;
-		background: rgba(0, 0, 0, 0.8);
+		background: color-mix(in srgb, var(--bg-color) 80%, transparent);
 		padding: 15px;
 		border-radius: 8px;
 		color: #00ff00;
@@ -491,7 +495,7 @@
 		pointer-events: none;
 		padding: 6px;
 		color: #ffffff;
-		background: rgba(0, 0, 0, .8);
+		background: color-mix(in srgb, var(--bg-color) 80%, transparent);
 		border: 1px solid #555;
 	}
 	
@@ -624,7 +628,7 @@
 		top: 20px;
 		left: 50%;
 		transform: translateX(-50%);
-		background: rgba(0, 34, 68, 0.95);
+		background: color-mix(in srgb, var(--bg-color) 95%, transparent);
 		color: #00ff00;
 		padding: 12px 24px;
 		border-radius: 8px;
@@ -670,7 +674,7 @@
 	/* Info box popup styles (middle-click) */
 	.info-box {
 		position: fixed;
-		background: rgba(0, 0, 0, 0.9);
+		background: color-mix(in srgb, var(--bg-color) 90%, transparent);
 		border: 2px solid #ffff00;
 		border-radius: 6px;
 		padding: 6px;
@@ -760,7 +764,7 @@
 	}
 	
 	.custom-panel {
-		background: rgba(0, 0, 0, 0.92);
+		background: color-mix(in srgb, var(--bg-color) 92%, transparent);
 		max-width: 400px;
 		max-height: 60vh;
 		overflow-y: auto;
@@ -3645,6 +3649,7 @@
 	        this.state.addEventListener('vis', () => {
 	            this._updateColors();
 	            this.renderer.setClearColor(this.state.bgColor);
+	            document.documentElement.style.setProperty('--bg-color', this.state.bgColor);
 	        });
 	
 	        /* ── viewer settings - using CONFIG ──────────────────── */
@@ -4934,6 +4939,7 @@
 				let sp = NOTIF.spinner('Starting up...');
 				try {
 					await getConfig();
+					document.documentElement.style.setProperty('--bg-color', CONFIG.rendering.clearColor);
 
 					// Update page title from config
 					document.title = CONFIG.info.title;
