@@ -16,11 +16,15 @@
 	<!-- styles -->
 		<!-- begin 'style.css' -->
 	<style>
+	:root {
+		--bg-color: #000011;
+	}
+	
 	/* Base styles */
 	body {
 		margin: 0;
 		padding: 0;
-		background: #000;
+		background: var(--bg-color);
 		font-family: 'Courier New', monospace;
 		overflow: hidden;
 	}
@@ -36,7 +40,7 @@
 		position: absolute;
 		top: 20px;
 		right: 20px;
-		background: rgba(0, 0, 0, 0.7);
+		background: color-mix(in srgb, var(--bg-color) 70%, transparent);
 		padding: 10px;
 		border-radius: 8px;
 		color: #00ff00;
@@ -59,7 +63,7 @@
 	/* Menu base styles */
 	.menu {
 		position: absolute;
-		background: rgba(0, 0, 0, 0.8);
+		background: color-mix(in srgb, var(--bg-color) 80%, transparent);
 		padding: 15px;
 		border-radius: 8px;
 		color: #00ff00;
@@ -491,7 +495,7 @@
 		pointer-events: none;
 		padding: 6px;
 		color: #ffffff;
-		background: rgba(0, 0, 0, .8);
+		background: color-mix(in srgb, var(--bg-color) 80%, transparent);
 		border: 1px solid #555;
 	}
 	
@@ -624,7 +628,7 @@
 		top: 20px;
 		left: 50%;
 		transform: translateX(-50%);
-		background: rgba(0, 34, 68, 0.95);
+		background: color-mix(in srgb, var(--bg-color) 95%, transparent);
 		color: #00ff00;
 		padding: 12px 24px;
 		border-radius: 8px;
@@ -670,7 +674,7 @@
 	/* Info box popup styles (middle-click) */
 	.info-box {
 		position: fixed;
-		background: rgba(0, 0, 0, 0.9);
+		background: color-mix(in srgb, var(--bg-color) 90%, transparent);
 		border: 2px solid #ffff00;
 		border-radius: 6px;
 		padding: 6px;
@@ -745,6 +749,39 @@
 		fill: #ffff00;
 		fill-opacity: 0.8;
 	}
+	
+	/* Custom extension panels – flow container for auto-positioned panels */
+	#custom-panels-flow {
+		position: absolute;
+		top: 10px;
+		left: 10px;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		pointer-events: none;
+		z-index: 1100;
+		max-width: calc(100vw - 250px);
+	}
+	
+	.custom-panel {
+		background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+		max-width: 400px;
+		max-height: 60vh;
+		overflow-y: auto;
+	}
+	
+	/* Explicitly-positioned panels need their own z-index */
+	#container > .custom-panel {
+		z-index: 1100;
+	}
+	
+	#custom-panels-flow > .custom-panel {
+		position: static;
+		pointer-events: auto;
+	}
+	
+	.custom-panel-body { font-size: 12px; }
+	
 	</style>
 	<!-- end 'style.css' -->
 		<!-- begin 'notif.css' -->
@@ -2552,6 +2589,14 @@
   ]
 };
 	
+	var HOOKS = {
+		colorOverrideFn: null,   // (rowIndex, row) => {r, g, b} | null
+		hoverExtendFn: null,     // (rowIndex, row) => htmlString | null
+		onReady: null,           // async (pointCloud, uiManager) => void
+	};
+	
+	/*$$$INLINE_HOOKS$$$*/
+	
 	
 	/* global, mutable CONFIG + helper to merge an optional config.json */
 	function getDefaultConfig() {
@@ -2722,6 +2767,15 @@
 			// Highlight groups - custom groups to highlight via URL or config
 			// Format: { groupName: { col: "columnName", values: ["val1", "val2"], color: "#ff0000" } }
 			highlightGroups: {},
+	
+			// Custom extension panels
+			// Format: { id, title, key, shortcutText, visible, html,
+			//   position?: { top, left, right, bottom },  -- CSS positioning overrides
+			//   style?: { ... },      -- arbitrary CSS properties (background, zIndex, etc.)
+			//   className?: "...",    -- additional CSS class(es) to add
+			//   draggable?: bool      -- make panel draggable by its header
+			// }
+			customPanels: [],
 		}
 	
 		if (INLINE_CONFIG) {
@@ -2897,6 +2951,19 @@
 		}, 500); // 500ms debounce
 	}
 	
+	/** Paths to exclude from URL serialization (large or runtime-injected content) */
+	const URL_SKIP_PATHS = [
+		"data.",
+		"customPanels",
+		"middleClick.content",
+		"rightClick.content.template",
+		"info.help",
+	];
+	
+	function shouldSkipInURL(path) {
+		return URL_SKIP_PATHS.some((skipPath) => path.startsWith(skipPath));
+	}
+	
 	/**
 	 * Generate URL search params from current CONFIG state
 	 * Only includes values that differ from the loaded config (not defaults)
@@ -2911,15 +2978,10 @@
 		const differences = findConfigDifferences(CONFIG, LOADED_CONFIG);
 	
 		for (const [path, value] of differences) {
-			// Skip the data field to prevent huge URLs
-			if (path === 'data') {
-				continue;
-			}
+			if (shouldSkipInURL(path)) continue;
 	
 			// Skip highlightGroups - handled separately below
-			if (path.startsWith('highlightGroups')) {
-				continue;
-			}
+			if (path.startsWith('highlightGroups')) continue;
 	
 			// Special handling for arrays
 			if (Array.isArray(value)) {
@@ -2963,6 +3025,7 @@
 				// Skip the data field to prevent huge URLs
 				continue;
 			}
+			if (typeof current[key] === 'function') continue;
 			const currentPath = prefix ? `${prefix}.${key}` : key;
 			const currentValue = current[key];
 			const baseValue = base[key];
@@ -3015,7 +3078,8 @@
 	 * Get the current configuration as a formatted JSON string
 	 */
 	function getConfigAsJSON() {
-		return JSON.stringify(CONFIG, null, 2);
+		return JSON.stringify(CONFIG, (key, value) =>
+			typeof value === 'function' ? undefined : value, 2);
 	}
 	
 	/**
@@ -3793,6 +3857,18 @@
 		attrs(rowId) {
 			const row = this.model.row(rowId);
 	
+			// Color override hook (highest priority)
+			if (HOOKS.colorOverrideFn) {
+				const override = HOOKS.colorOverrideFn(rowId, row);
+				if (override != null) {
+					return {
+						r: override.r, g: override.g, b: override.b,
+						size: override.size ?? this.state.selSize,
+						opacity: override.opacity ?? this.state.selOp
+					};
+				}
+			}
+	
 			// Check highlight groups FIRST (supersedes selection)
 			const highlightGroup = this._getHighlightGroup(row);
 			if (highlightGroup) {
@@ -4093,6 +4169,18 @@
 	            stats: { key: 'KeyJ', elementId: 'statsMenu', shortcutText: 'j – stats', visible: CONFIG.panels.stats }
 	        };
 	
+	        /* register custom extension panels ------------------------------ */
+	        if (CONFIG.customPanels && Array.isArray(CONFIG.customPanels)) {
+	            for (const panel of CONFIG.customPanels) {
+	                this.uiConfig[`custom_${panel.id}`] = {
+	                    key: panel.key,
+	                    elementId: `customPanel-${panel.id}`,
+	                    shortcutText: panel.shortcutText,
+	                    visible: panel.visible ?? false
+	                };
+	            }
+	        }
+	
 	        /* categorical columns for c / v cycling ------------------------ */
 	        this.cats = this.pointCloud.model.df.columns
 	            .filter(c => !c.startsWith(CONFIG.numericalPrefix));
@@ -4116,6 +4204,7 @@
 	
 	    /* ========================================================= */
 	    _init() {
+	        this._createCustomPanels();
 	        this._buildShortcutsLegend();
 	        this._setupControlSliders();
 	        this._bindKeys();
@@ -4144,6 +4233,100 @@
 	            this._updateLegendDisplay();
 	            this._updateSelectedValuesDisplay();
 	        });
+	    }
+	
+	    _createCustomPanels() {
+	        if (!CONFIG.customPanels?.length) return;
+	        const container = document.getElementById('container');
+	
+	        // Flow container for auto-positioned panels (no explicit position)
+	        let flowContainer = document.getElementById('custom-panels-flow');
+	        if (!flowContainer) {
+	            flowContainer = document.createElement('div');
+	            flowContainer.id = 'custom-panels-flow';
+	            container.appendChild(flowContainer);
+	        }
+	
+	        for (const panel of CONFIG.customPanels) {
+	            const el = document.createElement('div');
+	            el.id = `customPanel-${panel.id}`;
+	            el.className = 'menu custom-panel';
+	
+	            // Additional consumer CSS classes
+	            if (panel.className) {
+	                el.classList.add(...panel.className.trim().split(/\s+/));
+	            }
+	
+	            const hasExplicitPosition = !!panel.position;
+	
+	            // Position: explicit config → absolute in #container
+	            if (hasExplicitPosition) {
+	                for (const [prop, val] of Object.entries(panel.position))
+	                    el.style[prop] = val;
+	            }
+	
+	            // Arbitrary style overrides (applied last for highest specificity)
+	            if (panel.style) {
+	                for (const [prop, val] of Object.entries(panel.style))
+	                    el.style[prop] = val;
+	            }
+	
+	            const header = document.createElement('h4');
+	            header.style.cssText = 'margin:0 0 8px;color:#00ccff;';
+	            header.textContent = panel.title || panel.id;
+	
+	            el.appendChild(header);
+	
+	            const body = document.createElement('div');
+	            body.className = 'custom-panel-body';
+	            body.innerHTML = panel.html || '';
+	            el.appendChild(body);
+	
+	            const hint = document.createElement('div');
+	            hint.className = 'close-hint';
+	            hint.textContent = `Press ${panel.shortcutText?.split('–')[0]?.trim() || '?'} to close`;
+	            el.appendChild(hint);
+	
+	            // Draggable support
+	            if (panel.draggable) {
+	                header.style.cursor = 'move';
+	                header.style.userSelect = 'none';
+	                header.addEventListener('mousedown', e => {
+	                    e.preventDefault();
+	                    const startX = e.clientX, startY = e.clientY;
+	                    const rect = el.getBoundingClientRect();
+	                    const origLeft = rect.left, origTop = rect.top;
+	                    // Pop out of flow container into absolute positioning
+	                    if (el.parentElement === flowContainer) {
+	                        el.style.position = 'absolute';
+	                        el.style.left = `${origLeft}px`;
+	                        el.style.top = `${origTop}px`;
+	                        container.appendChild(el);
+	                    }
+	                    const onMove = e2 => {
+	                        el.style.left = `${origLeft + e2.clientX - startX}px`;
+	                        el.style.top = `${origTop + e2.clientY - startY}px`;
+	                        el.style.right = 'auto';
+	                        el.style.bottom = 'auto';
+	                    };
+	                    const onUp = () => {
+	                        document.removeEventListener('mousemove', onMove);
+	                        document.removeEventListener('mouseup', onUp);
+	                    };
+	                    document.addEventListener('mousemove', onMove);
+	                    document.addEventListener('mouseup', onUp);
+	                });
+	            }
+	
+	            el.style.display = (panel.visible ?? false) ? 'block' : 'none';
+	
+	            // Auto-positioned panels go in the flow container; explicit ones in #container
+	            if (hasExplicitPosition) {
+	                container.appendChild(el);
+	            } else {
+	                flowContainer.appendChild(el);
+	            }
+	        }
 	    }
 	
 	    _applyInitialPanelVisibility() {
@@ -4198,12 +4381,17 @@
 	        const sc = document.getElementById('shortcuts');
 	        sc.innerHTML = '<div>wasd – move</div><div>mouse + Q/E – roll</div>';
 	
-	        Object.values(this.uiConfig).forEach(cfg => {
+	        const addShortcut = cfg => {
 	            const d = document.createElement('div');
 	            d.className = 'shortcut-link';
 	            d.dataset.action = cfg.elementId;
 	            d.innerHTML = `${cfg.shortcutText} <span class="status-indicator ${cfg.visible ? 'status-enabled' : 'status-disabled'}">(${cfg.visible ? 'enabled' : 'disabled'})</span>`;
 	            sc.appendChild(d);
+	        };
+	
+	        // Built-in panels first
+	        Object.entries(this.uiConfig).forEach(([name, cfg]) => {
+	            if (!name.startsWith('custom_')) addShortcut(cfg);
 	        });
 	
 	        // Add hover, click-select, and right-click shortcuts with status indicators from CONFIG
@@ -4212,6 +4400,11 @@
 	        <div class="shortcut-link" data-action="click-select-toggle">b – click-select <span class="status-indicator ${CONFIG.interaction.selectOnClick ? 'status-enabled' : 'status-disabled'}" id="click-select-status">(${CONFIG.interaction.selectOnClick ? 'enabled' : 'disabled'})</span></div>
 	        <div class="shortcut-link" data-action="right-click-toggle">o – right-click <span class="status-indicator ${CONFIG.interaction.rightClickActive ? 'status-enabled' : 'status-disabled'}" id="right-click-status">(${CONFIG.interaction.rightClickActive ? 'enabled' : 'disabled'})</span></div>
 	        <div class="shortcut-link" data-action="middle-click-toggle">p – middle-click <span class="status-indicator ${CONFIG.middleClick.enabled ? 'status-enabled' : 'status-disabled'}" id="middle-click-status">(${CONFIG.middleClick.enabled ? 'enabled' : 'disabled'})</span></div>`);
+	
+	        // Custom extension panels at the bottom
+	        Object.entries(this.uiConfig).forEach(([name, cfg]) => {
+	            if (name.startsWith('custom_')) addShortcut(cfg);
+	        });
 	
 	        sc.addEventListener('click', e => {
 	            const target = e.target.closest('[data-action]');
@@ -4796,7 +4989,13 @@
 	        cfg.visible = !cfg.visible;
 	
 	        // Update CONFIG to keep it in sync
-	        CONFIG.panels[name] = cfg.visible;
+	        if (name.startsWith('custom_')) {
+	            const panelDef = CONFIG.customPanels?.find(
+	                p => p.id === name.replace('custom_', ''));
+	            if (panelDef) panelDef.visible = cfg.visible;
+	        } else {
+	            CONFIG.panels[name] = cfg.visible;
+	        }
 	        updateURL(); // Sync to URL
 	
 	        document.getElementById(cfg.elementId).style.display = cfg.visible ? 'block' : 'none';
@@ -4885,10 +5084,16 @@
 	            this.pointCloud.model.getCoord(id, a.y).toFixed(2),
 	            this.pointCloud.model.getCoord(id, a.z).toFixed(2)
 	        ];
-	        const html = CONFIG.hoverColumns
+	        let html = CONFIG.hoverColumns
 	            .map(c => `<b>${c}</b>: ${row[c]}`)
 	            .concat([`<b>coord</b>: [${xyz.join(', ')}]`])
 	            .join('<br>');
+	
+	        // Hover extension hook
+	        if (HOOKS.hoverExtendFn) {
+	            const extra = HOOKS.hoverExtendFn(id, row);
+	            if (extra) html += '<hr style="border-color:#333;margin:4px 0">' + extra;
+	        }
 	
 	        this.hoverPanel.innerHTML = html;
 	        const { x, y } = this.pointCloud.pointerScreen;
@@ -5035,6 +5240,7 @@
 	        this.state.addEventListener('vis', () => {
 	            this._updateColors();
 	            this.renderer.setClearColor(this.state.bgColor);
+	            document.documentElement.style.setProperty('--bg-color', this.state.bgColor);
 	        });
 	
 	        /* ── viewer settings - using CONFIG ──────────────────── */
@@ -6324,6 +6530,7 @@
 				let sp = NOTIF.spinner('Starting up...');
 				try {
 					await getConfig();
+					document.documentElement.style.setProperty('--bg-color', CONFIG.rendering.clearColor);
 
 					// Update page title from config
 					document.title = CONFIG.info.title;
@@ -6338,6 +6545,17 @@
 					const pointCloud = new PointCloud(model);
 					const uiManager = new UIManager(pointCloud);
 					pointCloud.setUIManager(uiManager);
+
+					// Call onReady hook
+					if (HOOKS.onReady) {
+						try {
+							await HOOKS.onReady(pointCloud, uiManager);
+						} catch (err) {
+							console.error('onReady hook error:', err);
+							NOTIF.error('Extension init error: ' + err.message);
+						}
+					}
+
 					sp.complete();
 					NOTIF.success('Ready! Press H for help.');
 				} catch (error) {
