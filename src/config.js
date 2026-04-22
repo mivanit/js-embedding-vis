@@ -364,6 +364,19 @@ function updateURL() {
 	}, 500); // 500ms debounce
 }
 
+/** Paths to exclude from URL serialization (large or runtime-injected content) */
+const URL_SKIP_PATHS = [
+	"data.",
+	"customPanels",
+	"middleClick.content",
+	"rightClick.content.template",
+	"info.help",
+];
+
+function shouldSkipInURL(path) {
+	return URL_SKIP_PATHS.some((skipPath) => path.startsWith(skipPath));
+}
+
 /**
  * Generate URL search params from current CONFIG state
  * Only includes values that differ from the loaded config (not defaults)
@@ -378,20 +391,10 @@ function generateURLParams() {
 	const differences = findConfigDifferences(CONFIG, LOADED_CONFIG);
 
 	for (const [path, value] of differences) {
-		// Skip the data field to prevent huge URLs
-		if (path === 'data') {
-			continue;
-		}
+		if (shouldSkipInURL(path)) continue;
 
 		// Skip highlightGroups - handled separately below
-		if (path.startsWith('highlightGroups')) {
-			continue;
-		}
-
-		// Skip customPanels - too large for URL
-		if (path.startsWith('customPanels')) {
-			continue;
-		}
+		if (path.startsWith('highlightGroups')) continue;
 
 		// Special handling for arrays
 		if (Array.isArray(value)) {
